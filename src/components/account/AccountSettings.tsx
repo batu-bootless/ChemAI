@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useReducedMotion } from "motion/react";
 import WaveGlow from "@/mobile/ai/WaveGlow";
+import ActivityCalendar from "./ActivityCalendar";
 import {
   UserPen,
   ShieldHalf,
@@ -886,6 +887,8 @@ export default function AccountSettings({ variant = "page" }: { variant?: "page"
                 </button>
               </div>
             )}
+
+            <ActivityCalendar />
 
             {/* The account sections, in the reference's pill bar. */}
             <nav className="relative mt-5 overflow-x-auto rounded-full border-[1.5px] border-[#cfe0ff] bg-white p-1.5 [-ms-overflow-style:none] [scrollbar-width:none] dark:border-white/10 dark:bg-[#1c1c1e] [&::-webkit-scrollbar]:hidden">
