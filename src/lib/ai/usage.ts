@@ -38,14 +38,19 @@ export function countUsage(patch: Partial<DayUsage>): void {
   const day = { ...EMPTY, ...log[key] };
   for (const [name, value] of Object.entries(patch) as [keyof DayUsage, number][]) day[name] += value;
   log[key] = day;
-  // Only the last 120 days are kept.
+  // Only the last 400 days of use are kept: enough for the account page's year of activity.
   const keys = Object.keys(log).sort();
-  for (const old of keys.slice(0, Math.max(0, keys.length - 120))) delete log[old];
+  for (const old of keys.slice(0, Math.max(0, keys.length - 400))) delete log[old];
   try {
     window.localStorage.setItem(KEY, JSON.stringify(log));
   } catch {
     // storage unavailable: this turn is not counted
   }
+}
+
+/** Every day of use on this device, by `dayKey` (for the account page's activity calendar). */
+export function usageLog(): Record<string, DayUsage> {
+  return typeof window === "undefined" ? {} : read();
 }
 
 export interface UsageSummary {

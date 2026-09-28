@@ -104,9 +104,11 @@ html.dark .border-teal-300:not([class*="dark:border-"], .app-light, .app-light *
 html.dark .border-violet-300:not([class*="dark:border-"], .app-light, .app-light *) { border-color: rgb(139 92 246 / 0.42); }
 html.dark .disabled\:bg-gray-200:disabled:not([class*="dark:disabled:bg-"], [class*="disabled:dark:bg-"], .app-light, .app-light *) { background-color: rgb(58 58 60); }
 html.dark .disabled\:text-gray-400:disabled:not([class*="dark:disabled:text-"], [class*="disabled:dark:text-"], .app-light, .app-light *) { color: #7C7C82; }
+html.dark .focus-visible\:ring-gray-400:focus-visible:not([class*="dark:focus-visible:ring-"], [class*="focus-visible:dark:ring-"], .app-light, .app-light *) { --tw-ring-color: rgb(255 255 255 / 0.25); }
 html.dark .focus\:border-brand-purple:focus:not([class*="dark:focus:border-"], [class*="focus:dark:border-"], .app-light, .app-light *) { border-color: rgb(216 170 203 / 0.5); }
 html.dark .focus\:ring-brand-purple:focus:not([class*="dark:focus:ring-"], [class*="focus:dark:ring-"], .app-light, .app-light *) { --tw-ring-color: rgb(216 170 203 / 0.35); }
 html.dark .ring-brand-purple:not([class*="dark:ring-"], .app-light, .app-light *) { --tw-ring-color: rgb(216 170 203 / 0.35); }
+html.dark .ring-gray-400:not([class*="dark:ring-"], .app-light, .app-light *) { --tw-ring-color: rgb(255 255 255 / 0.25); }
 html.dark .text-amber-800:not([class*="dark:text-"], .app-light, .app-light *) { color: #fcd34d; }
 html.dark .text-blue-600:not([class*="dark:text-"], .app-light, .app-light *) { color: #60a5fa; }
 html.dark .text-blue-700:not([class*="dark:text-"], .app-light, .app-light *) { color: #93c5fd; }
@@ -148,6 +150,7 @@ html.dark .text-yellow-600:not([class*="dark:text-"], .app-light, .app-light *) 
   html.dark .hover\:bg-slate-50:hover:not([class*="dark:hover:bg-"], [class*="hover:dark:bg-"], .app-light, .app-light *) { background-color: rgb(36 36 38); }
   html.dark .hover\:bg-white:hover:not([class*="dark:hover:bg-"], [class*="hover:dark:bg-"], .app-light, .app-light *) { background-color: rgb(28 28 30); }
   html.dark .hover\:border-gray-300:hover:not([class*="dark:hover:border-"], [class*="hover:dark:border-"], .app-light, .app-light *) { border-color: rgb(255 255 255 / 0.19); }
+  html.dark .hover\:ring-gray-400:hover:not([class*="dark:hover:ring-"], [class*="hover:dark:ring-"], .app-light, .app-light *) { --tw-ring-color: rgb(255 255 255 / 0.25); }
   html.dark .hover\:text-gray-600:hover:not([class*="dark:hover:text-"], [class*="hover:dark:text-"], .app-light, .app-light *) { color: #AEAEB2; }
   html.dark .hover\:text-gray-700:hover:not([class*="dark:hover:text-"], [class*="hover:dark:text-"], .app-light, .app-light *) { color: #D1D1D6; }
   html.dark .hover\:text-slate-700:hover:not([class*="dark:hover:text-"], [class*="hover:dark:text-"], .app-light, .app-light *) { color: #D1D1D6; }
