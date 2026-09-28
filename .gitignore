@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+ios/Pods/
+.dart_tool/
+.pub-cache/
+
+# Expo / React Native
+.expo/
+.expo-shared/
+dist/
+web-build/
+.metro-health-check*
+
+# Build output
+build/
+android/.gradle/
+android/app/build/
+android/build/
+ios/build/
+*.apk
+*.aab
+*.ipa
+
+# Signing keys and secrets
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
