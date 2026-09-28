@@ -51,3 +51,13 @@ node scripts/preview/web-server.mjs
 → http://localhost:5182/dashboard/ (`D:\targa\.claude\launch.json` içinde `chem-ai-web`). E-posta ile giriş, hesap ayarları, İris'in çevrimdışı planlayıcısı ve hesap motoru çalışır; yapay zekâ yanıtları, hesap silme ve Google ile giriş yalnızca telefonda çalışır.
 
 Test telefonu: `.\scripts\emulator.ps1`, ardından `node scripts/preview/server.mjs` → http://localhost:5183.
+
+### Telefonda canlı önizleme (APK'sız)
+
+```powershell
+npm run dev:mobile
+```
+
+Telefon bilgisayarla aynı Wi-Fi'deyken, ekrana yazılan adresi (ör. `http://192.168.1.23:3001/dashboard/`) telefonun tarayıcısında açın; kod değiştikçe sayfa kendiliğinden yenilenir. `scripts/dev-mobile.mjs` bilgisayarın Wi-Fi adresini bulur ve Next.js'in yalnızca o adrese izin vermesi için `next.config.ts`'e iletir (`CHEMAI_DEV_ORIGINS` → `allowedDevOrigins`). İlk açılışta Windows Güvenlik Duvarı sorarsa "Özel ağlar"a izin verin.
+
+Tarayıcıda yerel köprü olmadığından yapay zekâ yanıtları ve Google ile giriş burada da çalışmaz; tarayıcılar mikrofonu yalnızca https'te ya da localhost'ta açtığı için sesli giriş de çalışmaz. Bunlar için APK gerekir.

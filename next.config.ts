@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
   // (android/.../AppRoutes.java) maps request paths onto.
   trailingSlash: true,
   images: { unoptimized: true },
+  // `npm run dev:mobile` (scripts/dev-mobile.mjs) passes this computer's Wi-Fi addresses, so a
+  // phone on the same network can load the dev server. Unset for `npm run dev` and builds.
+  allowedDevOrigins: process.env.CHEMAI_DEV_ORIGINS?.split(",").filter(Boolean) ?? [],
   turbopack: {
     root: path.join(__dirname),
   },
