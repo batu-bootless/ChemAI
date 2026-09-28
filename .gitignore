@@ -1,46 +1,29 @@
-# Dependencies
+# Dashboard build (Next.js) and dependencies
 node_modules/
-ios/Pods/
-.dart_tool/
-.pub-cache/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
 
-# Expo / React Native
-.expo/
-.expo-shared/
+# Only NEXT_PUBLIC_ values live here, but they come from the web project's env file
+.env*
+
+# Android (Capacitor project in android/, which has its own .gitignore)
 dist/
-web-build/
-.metro-health-check*
-
-# Build output
 build/
-android/.gradle/
-android/app/build/
-android/build/
-ios/build/
-*.apk
-*.aab
-*.ipa
+local.properties
+*.iml
+.idea/
 
-# Signing keys and secrets
+# The previous Trusted Web Activity version, kept for reference
+_eski-twa/
+
+# Signing: never commit the upload key or its passwords
+keystore/
+keystore.properties
 *.jks
 *.keystore
-*.p8
-*.p12
-*.key
-*.pem
-*.mobileprovision
-.env
-.env.*
-!.env.example
 
-# Python
-__pycache__/
-*.py[cod]
-venv/
-.venv/
-
-# Editors / OS
-.vscode/
-.idea/
+# OS
 .DS_Store
 Thumbs.db

@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ChemAI</string>
+    <string name="title_activity_main">ChemAI</string>
+    <string name="package_name">com.chemai.app</string>
+    <string name="custom_url_scheme">com.chemai.app</string>
+
+    <string name="print_job_name">ChemAI belgesi</string>
+    <string name="share_file_title">Paylaş</string>
+    <string name="downloads_folder">İndirilenler</string>
+</resources>

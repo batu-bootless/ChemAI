@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chem AI telefon önizlemesi</title>
+<style>
+  :root {
+    --bg: #f3f4f6;
+    --card: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --brand: #5b0f12;
+    --error: #b91c1c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 system-ui, "Segoe UI", sans-serif;
+  }
+  main {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 16px;
+  }
+  .phone {
+    background: #0b0b0f;
+    border-radius: 36px;
+    padding: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+    max-width: 100%;
+  }
+  #screen {
+    display: block;
+    height: min(86vh, 900px);
+    max-width: 100%;
+    aspect-ratio: 1080 / 2400;
+    object-fit: contain;
+    border-radius: 28px;
+    background: #ffffff;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+  }
+  aside { width: min(100%, 320px); display: grid; gap: 12px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p { margin: 0; color: var(--muted); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row + .row, p + .row { margin-top: 10px; }
+  button {
+    font: inherit;
+    color: var(--text);
+    border: 1px solid var(--line);
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  button:hover { background: #f9fafb; }
+  button.primary { background: var(--brand); border-color: var(--brand); color: #ffffff; }
+  input {
+    font: inherit;
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+  #status { font-size: 13px; color: var(--muted); padding: 0 4px; }
+  #status.error { color: var(--error); }
+</style>
+</head>
+<body>
+<main>
+  <div class="phone">
+    <img id="screen" alt="Test telefonunun ekranı" draggable="false">
+  </div>
+  <aside>
+    <div class="card">
+      <h1>Chem AI Android uygulaması</h1>
+      <p>Bu bilgisayardaki test telefonunun (emülatör) canlı görüntüsü. Ekrana tıklayın; sürükleyerek ya da fare tekerleğiyle kaydırın; basılı tutarak uzun basın.</p>
+    </div>
+    <div class="card row">
+      <button class="primary" type="button" data-action="open-app">Chem AI'ı aç</button>
+      <button type="button" data-key="back">Geri</button>
+      <button type="button" data-key="home">Ana ekran</button>
+      <button type="button" data-key="recents">Son uygulamalar</button>
+    </div>
+    <form class="card" id="type-form">
+      <p>Önce telefonda bir yazı alanına tıklayın, sonra yazıyı buradan gönderin. Türkçe karakterler (ç, ğ, ı, ö, ş, ü) buradan gönderilemez; onları emülatör penceresinde klavyeyle yazın.</p>
+      <div class="row">
+        <input id="type-text" autocomplete="off" placeholder="Gönderilecek yazı">
+        <button type="submit">Gönder</button>
+      </div>
+      <div class="row">
+        <button type="button" data-key="backspace">Sil</button>
+        <button type="button" data-key="enter">Enter</button>
+      </div>
+    </form>
+    <div id="status">Bağlanıyor…</div>
+  </aside>
+</main>
+<script>
+  const screenImg = document.getElementById("screen");
+  const statusEl = document.getElementById("status");
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  function setStatus(text, isError = false) {
+    statusEl.textContent = text;
+    statusEl.classList.toggle("error", isError);
+  }
+
+  // Keeps an action's error readable for a while; the frame loop would overwrite it at once.
+  let errorShownUntil = 0;
+  function showError(text) {
+    setStatus(text, true);
+    errorShownUntil = Date.now() + 6000;
+  }
+
+  async function post(path, body) {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "x-phone-preview": "1", "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await res.text());
+  }
+
+  function act(path, body) {
+    post(path, body).catch((error) => showError("İşlem gönderilemedi: " + error.message));
+  }
+
+  // Fetches frames one after another, so a slow capture never piles up requests.
+  async function refreshLoop() {
+    let shownUrl = null;
+    for (;;) {
+      try {
+        const res = await fetch("/api/screen", { cache: "no-store" });
+        if (!res.ok) throw new Error(await res.text());
+        const url = URL.createObjectURL(await res.blob());
+        await new Promise((resolve) => {
+          screenImg.onload = screenImg.onerror = resolve;
+          screenImg.src = url;
+        });
+        if (shownUrl) URL.revokeObjectURL(shownUrl);
+        shownUrl = url;
+        if (Date.now() > errorShownUntil) setStatus("Canlı görüntü");
+      } catch (error) {
+        setStatus("Test telefonuna ulaşılamıyor. Önce scripts\\emulator.ps1 ile açın. (" + error.message + ")", true);
+        await sleep(2000);
+      }
+      await sleep(document.hidden ? 1500 : 100);
+    }
+  }
+
+  // Pointer position in device pixels.
+  function devicePoint(event) {
+    const rect = screenImg.getBoundingClientRect();
+    const x = Math.round(((event.clientX - rect.left) / rect.width) * screenImg.naturalWidth);
+    const y = Math.round(((event.clientY - rect.top) / rect.height) * screenImg.naturalHeight);
+    return {
+      x: Math.min(Math.max(x, 0), screenImg.naturalWidth - 1),
+      y: Math.min(Math.max(y, 0), screenImg.naturalHeight - 1),
+    };
+  }
+
+  let press = null;
+  screenImg.addEventListener("pointerdown", (event) => {
+    if (!screenImg.naturalWidth) return;
+    screenImg.setPointerCapture(event.pointerId);
+    press = { ...devicePoint(event), startedAt: performance.now() };
+  });
+  screenImg.addEventListener("pointerup", (event) => {
+    if (!press) return;
+    const end = devicePoint(event);
+    const ms = Math.round(performance.now() - press.startedAt);
+    if (Math.hypot(end.x - press.x, end.y - press.y) > 24) {
+      const duration = Math.min(Math.max(ms, 120), 1500);
+      act(`/api/swipe?x1=${press.x}&y1=${press.y}&x2=${end.x}&y2=${end.y}&ms=${duration}`);
+    } else if (ms > 500) {
+      act(`/api/swipe?x1=${press.x}&y1=${press.y}&x2=${press.x}&y2=${press.y}&ms=${Math.min(ms, 3000)}`);
+    } else {
+      act(`/api/tap?x=${press.x}&y=${press.y}`);
+    }
+    press = null;
+  });
+  screenImg.addEventListener("pointercancel", () => { press = null; });
+
+  // A burst of wheel events becomes one swipe through the middle of the screen.
+  let wheelDelta = 0;
+  let wheelX = 0;
+  let wheelTimer = null;
+  screenImg.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    if (!screenImg.naturalWidth) return;
+    wheelDelta += event.deltaY;
+    wheelX = devicePoint(event).x;
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(() => {
+      const distance = Math.max(-900, Math.min(900, Math.round(wheelDelta * 2)));
+      const middle = Math.round(screenImg.naturalHeight / 2);
+      const from = middle + Math.round(distance / 2);
+      const to = middle - Math.round(distance / 2);
+      wheelDelta = 0;
+      if (distance !== 0) act(`/api/swipe?x1=${wheelX}&y1=${from}&x2=${wheelX}&y2=${to}&ms=300`);
+    }, 120);
+  }, { passive: false });
+
+  document.querySelectorAll("[data-key]").forEach((button) => {
+    button.addEventListener("click", () => act(`/api/key?name=${button.dataset.key}`));
+  });
+  document.querySelector('[data-action="open-app"]').addEventListener("click", () => act("/api/open-app"));
+  document.getElementById("type-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const input = document.getElementById("type-text");
+    if (!input.value) return;
+    if (/[^\x20-\x7e]/.test(input.value)) {
+      showError("Bu yazıda Türkçe ya da özel karakter var. Onu emülatör penceresinde klavyeyle yazın.");
+      return;
+    }
+    act("/api/text", { value: input.value });
+    input.value = "";
+  });
+
+  refreshLoop();
+</script>
+</body>
+</html>

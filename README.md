@@ -1,3 +1,53 @@
-# ChemAI
+# ChemAI Android uygulaması
 
-Chem AI mobil uygulaması.
+ChemPlus'ın yapay zekâ asistanı **İris**'in kendi uygulaması. ChemPlus mobil uygulamasının (`D:\targa\chemplus-mobil-app`) kopyasından türetildi; o uygulamaya dokunulmadı. ChemAI'da yalnızca şunlar var:
+
+- **İris** (uygulamanın ana ekranı, `/dashboard/`): sohbet, fotoğraftan soru, veri tablosu (CSV), sesli sohbet, cihazdaki hesap motoru (RDKit, kompleksler, VSEPR, 3B yapı...) ve sohbet kartı olarak eylemler (zamanlayıcı, not, protokol, envanter, rapor/PDF, grafik).
+- **Giriş / kayıt** (`/login`, `/register`): e-posta ve Google ile giriş (ChemPlus ile aynı hesap sistemi, Supabase).
+- **Hesap** (`/dashboard/account/`): profil, güvenlik, bildirimler, tercihler (tema, dil), veri (indir, hesabı sil), çıkış.
+- **Gizlilik politikası** (`/gizlilik/`).
+
+Uygulama ücretsizdir; ödeme ve reklam yoktur. Her sayfa hesap ister (İris sitenin API'sini kullanıcının oturumuyla çağırır), bu yüzden oturum yoksa uygulama giriş ekranında açılır.
+
+## Nasıl çalışır
+
+| Parça | Açıklama |
+| --- | --- |
+| Arayüz | `src/` - Next.js statik dışa aktarımı (`output: export`, `trailingSlash`) → `out/`. |
+| Android kabuğu | `android/` - Capacitor 8; `out/` uygulamanın içinden `https://localhost` adresinde sunulur, açılış sayfası `/dashboard/`. |
+| Yapay zekâ | Sitenin `/api/ai/chat` ve `/api/ai/tts` uçları (chemplus.com.tr). Site bot korumasının arkasında olduğu için çağrılar telefonda gizli bir WebView'den yapılır (`ApiBridge.java`, `src/mobile/bridges.ts`). |
+| İris kodu | `src/mobile/ai/` (ekran, ses modu), `src/components/ai/` (kartlar, sohbet kancası), `src/lib/ai/` (planlayıcı `assistant.ts`, kılavuz `guide.ts`, ses), `src/lib/chem-engine/` (hesap motoru), `src/lib/agent/` (eylemler). |
+| Hesap | `src/lib/auth.ts`, `src/lib/AuthContext.tsx`, `src/mobile/auth/AuthScreen.tsx`, `src/components/account/AccountSettings.tsx`, `src/mobile/preferences.ts`. |
+| Yerel kod | `android/app/src/main/java/tr/com/chemplus/app/` (Java paket adı kopyadan kaldı; Play kimliği `applicationId` ile ayrı). |
+
+Önemli sınır: sitenin `/api/ai/chat` ucu `context` alanını 8000 karakterde keser, bu yüzden `PLANNER` metni (assistant.ts) ~7800 karakterin altında kalmalı.
+
+## Android kimliği
+
+- `applicationId`: **`com.chemai.app`** (`android/app/build.gradle`, `capacitor.config.ts`).
+- `versionCode 1`, `versionName 1.0.0` - yalnızca yeni bir Play yüklemesinde artırılır.
+- İmzalama: ChemAI'ın **kendi yükleme anahtarı** (ChemPlus'ınki değil), 27 Eylül 2026'da oluşturuldu: `keystore/chemai-upload.jks` + `keystore.properties` (ikisi de git dışı, **mutlaka yedekleyin**). SHA-1: `B2:6F:FF:FE:F2:2C:EB:84:69:0E:B5:E1:23:4B:D7:01:A7:E7:43:68`.
+- Google ile giriş için Google Cloud'da paket `com.chemai.app` ve yeni anahtarın SHA-1'iyle (`.\scripts\print-fingerprints.ps1`) bir Android OAuth istemcisi gerekir; Play App Signing anahtarının SHA-1'i için ikinci bir istemci. Supabase'de değişiklik gerekmez.
+
+## Derleme
+
+Gerekenler: Node.js 24, JDK 21, Android SDK (`D:\android-sdk`). `scripts\env.ps1` bu makinenin ayarlarını yapar (C: dolu olduğu için her şey D: diskinde).
+
+```powershell
+npm run build:web                 # yalnızca web (out\), tarayıcıda incelemek için
+.\scripts\build.ps1               # web + test APK'sı
+.\scripts\build.ps1 release       # web + imzalı AAB/APK -> dist\chemai-<sürüm>.*
+.\scripts\build.ps1 -SkipWeb      # son web derlemesini kullan
+```
+
+Sayfa eklenip çıkarıldıktan sonra `.next` ve `out` silinip yeniden derlenmeli; önizleme sunucusu sayfa listesini açılışta okuduğu için yeniden başlatılmalı.
+
+## İnceleme
+
+```powershell
+node scripts/preview/web-server.mjs
+```
+
+→ http://localhost:5182/dashboard/ (`D:\targa\.claude\launch.json` içinde `chem-ai-web`). E-posta ile giriş, hesap ayarları, İris'in çevrimdışı planlayıcısı ve hesap motoru çalışır; yapay zekâ yanıtları, hesap silme ve Google ile giriş yalnızca telefonda çalışır.
+
+Test telefonu: `.\scripts\emulator.ps1`, ardından `node scripts/preview/server.mjs` → http://localhost:5183.

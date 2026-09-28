@@ -1,0 +1,91 @@
+apply plugin: 'com.android.application'
+
+// Release signing reads ../keystore.properties (git-ignored; see keystore.properties.example).
+// Without it, release builds are unsigned.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('../keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+def hasUploadKey = keystoreProperties.getProperty('storeFile') != null
+
+android {
+    namespace = "tr.com.chemplus.app"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        // The package name Play knows this app by (Chem AI, its own listing - not ChemPlus's
+        // com.chemplus.chemistry). The Java sources keep the namespace they were copied with
+        // (tr.com.chemplus.app) - Android allows the two to differ.
+        applicationId "com.chemai.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        // Raise versionCode for every upload to Google Play.
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        if (hasUploadKey) {
+            upload {
+                storeFile rootProject.file('../' + keystoreProperties.getProperty('storeFile'))
+                storePassword keystoreProperties.getProperty('storePassword')
+                keyAlias keystoreProperties.getProperty('keyAlias')
+                keyPassword keystoreProperties.getProperty('keyPassword')
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            // Same key as release, so one SHA-1 in Google Cloud covers test builds (Google sign-in).
+            if (hasUploadKey) signingConfig signingConfigs.upload
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasUploadKey) signingConfig signingConfigs.upload
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation "androidx.webkit:webkit:$androidxWebkitVersion"
+    // Google sign-in (GoogleSignIn.java)
+    implementation "androidx.credentials:credentials:$androidxCredentialsVersion"
+    implementation "androidx.credentials:credentials-play-services-auth:$androidxCredentialsVersion"
+    implementation "com.google.android.libraries.identity.googleid:googleid:$googleIdVersion"
+    // Iris: text recognition on photos, on the device (ChemPlusPlugin.recognizeText). The
+    // Google Play services flavour keeps the ~11 MB-per-ABI model out of the app: Play installs it
+    // with the app (manifest meta-data "ocr") and shares it between apps.
+    implementation "com.google.android.gms:play-services-mlkit-text-recognition:19.0.1"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

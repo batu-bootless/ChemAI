@@ -1,0 +1,1140 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Chem+ app: one layout on every screen.
+   The app ships the phone design; a tablet is a big phone, not a desktop. Pushing every
+   breakpoint past any real device keeps `md:`/`lg:` utilities from ever matching, so the
+   sidebar, the split panes and the other desktop-only arrangements never appear. The raw
+   media queries further down and the width checks in GraphStudio / WorkspaceManager /
+   ActivityHeatmap follow the same rule. */
+@theme {
+  --breakpoint-sm: 99999px;
+  --breakpoint-md: 99999px;
+  --breakpoint-lg: 99999px;
+  --breakpoint-xl: 99999px;
+  --breakpoint-2xl: 99999px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-playfair);
+  --font-heading: var(--font-playfair);
+  --color-brand-purple: #6d445e;
+  --color-brand-teal: #4e8c98;
+  --color-brand-orange: #e5b994;
+  --color-brand-blue: #3b82f6;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #6e455f;
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* --- Mobile input/touch optimization ---
+   iOS Safari auto-zooms the whole page in when a focused form control's
+   font-size is under 16px - most inputs/textareas/selects across the app use
+   Tailwind's text-sm/text-xs (14px/12px), so typing on mobile involuntarily
+   triggered page zoom. Forcing 16px here (mobile only, so desktop keeps its
+   intended smaller text) fixes that without touching every input site-wide.
+   touch-action: manipulation removes the ~300ms tap delay on touch devices. */
+@media (max-width: 99999px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+a,
+button,
+input,
+textarea,
+select,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Slow ambient drift for glow blobs on dark/premium marketing backgrounds -
+   transform + opacity only so it stays cheap (GPU-composited, no layout or
+   paint work per frame) regardless of how many blobs use it. */
+@keyframes drift-slow {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate(3%, -4%) scale(1.08);
+    opacity: 0.75;
+  }
+}
+
+/* --- Floating Sticky Notes --- */
+
+.sticky-glass {
+  background: color-mix(in oklch, var(--sticky-color) 20%, white 80%);
+  border: 1px solid color-mix(in oklch, var(--sticky-color) 45%, white 20%);
+  box-shadow:
+    0 1px 2px color-mix(in oklch, var(--sticky-color) 30%, transparent),
+    0 18px 40px -12px color-mix(in oklch, var(--sticky-color) 45%, transparent),
+    0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.dark .sticky-glass {
+  background: color-mix(in oklch, var(--sticky-color) 26%, #1c1c1e 74%);
+  border: 1px solid color-mix(in oklch, var(--sticky-color) 40%, white 12%);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 18px 40px -12px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.sticky-glass-header {
+  background: color-mix(in oklch, var(--sticky-color) 32%, white 68%);
+  border-bottom: 1px solid color-mix(in oklch, var(--sticky-color) 35%, white 30%);
+}
+
+.dark .sticky-glass-header {
+  background: color-mix(in oklch, var(--sticky-color) 34%, #1c1c1e 66%);
+  border-bottom: 1px solid color-mix(in oklch, white 12%, transparent);
+}
+
+.sticky-focus-ring {
+  outline: 2px solid color-mix(in oklch, var(--sticky-color) 70%, white 10%);
+  outline-offset: 1px;
+}
+
+.sticky-snap-guide {
+  position: fixed;
+  background: var(--primary);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 100000;
+}
+
+.sticky-editor {
+  outline: none;
+  min-height: 100%;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.sticky-editor p {
+  margin: 0 0 0.5em;
+}
+
+.sticky-editor p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Mobile ergonomics (phones) ------------------------------------------ *
+ * The app is dense/desktop-first; on phones the smallest text was hard to
+ * read and tapping form fields zoomed the page (iOS). These rules are
+ * unlayered so they win over Tailwind's layered utilities without !important,
+ * and only apply at phone widths so desktop is untouched. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (max-width: 99999px) {
+  /* Raise the densest UI text to a comfortable minimum. */
+  .text-\[9px\] { font-size: 10.5px; }
+  .text-\[10px\] { font-size: 11.5px; }
+  .text-\[11px\] { font-size: 12.5px; }
+
+  /* 16px form fields stop iOS zoom-on-focus and are easier to tap. */
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Ketcher lays its top toolbar out as two nowrap groups with space-between,
+   so on a narrow screen the right-hand group pushes the whole page wider than
+   the viewport. Letting the strip wrap keeps every button reachable without a
+   scroll container that could clip the toolbar's own flyouts. */
+.chemdraw-host [class*="App-module_top"] {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  height: auto;
+}
+
+.sticky-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.sticky-editor ul,
+.sticky-editor ol {
+  padding-left: 1.25em;
+  margin: 0 0 0.5em;
+}
+
+.sticky-editor ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.1em;
+}
+
+.sticky-editor ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4em;
+}
+
+.sticky-editor ul[data-type="taskList"] li > label {
+  margin-top: 0.2em;
+  user-select: none;
+}
+
+.sticky-editor ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+
+.sticky-editor code {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.85em;
+}
+
+.sticky-editor pre {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 0.6em 0.8em;
+  overflow-x: auto;
+  margin: 0 0 0.5em;
+}
+
+.sticky-editor pre code {
+  background: none;
+  padding: 0;
+}
+
+.sticky-editor a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.sticky-editor img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 0.35em 0;
+}
+
+.sticky-editor hr {
+  border: none;
+  border-top: 1px solid color-mix(in oklch, var(--sticky-color) 40%, currentColor 10%);
+  margin: 0.75em 0;
+  opacity: 0.5;
+}
+
+.sticky-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sticky-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--sticky-color) 60%, black 10%);
+  border-radius: 999px;
+}
+
+.sticky-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --- Chem+ hero: RGB flowing-LED border for the ChemDraw card ------------- */
+@keyframes led-slide {
+  to {
+    background-position: 300% 50%;
+  }
+}
+
+.chemdraw-led-border {
+  background-image: linear-gradient(
+    90deg,
+    #ff004c,
+    #ff8a00,
+    #ffe600,
+    #21ff5a,
+    #00e5ff,
+    #2b6bff,
+    #a020f0,
+    #ff00c8,
+    #ff004c
+  );
+  background-size: 300% 100%;
+  background-position: 0% 50%;
+  animation: led-slide 6s linear infinite;
+}
+
+/* Blurred sibling behind the card that bleeds the same rainbow outward as glow.
+   Kept in sync by sharing the exact animation timing. */
+.chemdraw-led-glow {
+  position: absolute;
+  inset: -10px;
+  border-radius: 22px;
+  z-index: 0;
+  background-image: linear-gradient(
+    90deg,
+    #ff004c,
+    #ff8a00,
+    #ffe600,
+    #21ff5a,
+    #00e5ff,
+    #2b6bff,
+    #a020f0,
+    #ff00c8,
+    #ff004c
+  );
+  background-size: 300% 100%;
+  background-position: 0% 50%;
+  filter: blur(18px);
+  opacity: 0.6;
+  animation: led-slide 6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chemdraw-led-border,
+  .chemdraw-led-glow {
+    animation: none;
+  }
+}
+
+/* Chem+ app: the app draws edge to edge (viewport-fit=cover). Capacitor reports the system bar
+   insets in --safe-area-inset-* (0 when older WebViews are padded natively instead). */
+:root {
+  --app-safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --app-safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --app-safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --app-safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  /* Room kept free for the phone tab bar (src/mobile/tabbar/AppTabBar.tsx). */
+  --app-tabbar-space: 0px;
+  /* What a page keeps clear at the bottom: the tab bar, or else the system gesture bar. */
+  --app-bottom-space: var(--app-safe-bottom);
+  /* Height of a full-screen page between the status bar and the bottom space. */
+  --app-content-h: calc(100dvh - var(--app-safe-top) - var(--app-bottom-space));
+  --app-page-bg: #faf8f9;
+  /* The middle of the soft wash behind the home greeting and the account header; the paper
+     theme overrides it (src/app/app-paper.css). */
+  --app-wash-mid: #ffffff;
+}
+
+@media (max-width: 99999px) {
+  html[data-app-tabbar="on"] {
+    --app-tabbar-space: calc(84px + var(--app-safe-bottom));
+    --app-bottom-space: var(--app-tabbar-space);
+  }
+}
+
+/* The dark theme (src/mobile/AppPreferences.tsx) sets class="dark" and data-app-theme="dark" on
+   <html>; the dashboard's light utilities get their dark colors from app-dark.css. */
+html[data-app-theme="dark"] {
+  --app-page-bg: #000;
+  color-scheme: dark;
+}
+
+body {
+  padding: var(--app-safe-top) var(--app-safe-right) var(--app-bottom-space) var(--app-safe-left);
+  background-color: var(--app-page-bg);
+}
+
+/* There is no top bar on phones and no strip under the status bar: pages start below it and
+   scroll up under the transparent system bar, edge to edge. */
+
+/* Full-viewport layouts from the website fit between the status bar and the tab bar (or the
+   gesture bar). */
+.h-screen {
+  height: var(--app-content-h);
+}
+
+.min-h-screen {
+  min-height: var(--app-content-h);
+}
+
+/* Chem+ app: Liquid Glass surfaces of the tab bar. The content behind stays visible through a
+   light blur; ::before draws the glass rim, brightest where light would catch the edge. */
+.app-glass {
+  position: relative;
+  isolation: isolate;
+  background-color: rgb(24 26 30 / 0.3);
+  background-image: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.18) 0%,
+    rgb(255 255 255 / 0.05) 38%,
+    rgb(255 255 255 / 0) 62%,
+    rgb(255 255 255 / 0.07) 100%
+  );
+  -webkit-backdrop-filter: blur(14px) saturate(210%) brightness(0.92);
+  backdrop-filter: blur(14px) saturate(210%) brightness(0.92);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.3),
+    inset 0 -1px 1px rgb(255 255 255 / 0.1),
+    0 12px 32px -10px rgb(0 0 0 / 0.45),
+    0 2px 8px rgb(0 0 0 / 0.14);
+}
+
+.app-glass::before,
+.app-glass-lens::before,
+.app-liquid-lens::before,
+.app-glass-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 1.25px;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.85) 0%,
+    rgb(255 255 255 / 0.2) 24%,
+    rgb(255 255 255 / 0.05) 50%,
+    rgb(255 255 255 / 0.2) 76%,
+    rgb(255 255 255 / 0.65) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.app-glass-lens {
+  position: relative;
+  background-color: rgb(255 255 255 / 0.2);
+  background-image: radial-gradient(120% 90% at 50% 0%, rgb(255 255 255 / 0.3), rgb(255 255 255 / 0) 62%);
+  -webkit-backdrop-filter: blur(3px) saturate(170%) brightness(1.12);
+  backdrop-filter: blur(3px) saturate(170%) brightness(1.12);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.45),
+    inset 0 -1px 1px rgb(255 255 255 / 0.14),
+    0 6px 14px -4px rgb(0 0 0 / 0.3);
+  transition: background-color 0.2s;
+}
+
+.app-glass-lens::before {
+  padding: 1px;
+  opacity: 0.8;
+}
+
+.app-glass-lens[data-pressed="true"] {
+  background-color: rgb(255 255 255 / 0.3);
+}
+
+/* Light liquid glass (the AI chat, like ChatGPT's and Gemini's): a bright, clear pane that blurs
+   what scrolls under it, with a thin light rim and a soft shadow. */
+.app-glass-light {
+  position: relative;
+  isolation: isolate;
+  background-color: rgb(255 255 255 / 0.62);
+  background-image: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.7) 0%,
+    rgb(255 255 255 / 0.18) 55%,
+    rgb(255 255 255 / 0.35) 100%
+  );
+  -webkit-backdrop-filter: blur(20px) saturate(185%);
+  backdrop-filter: blur(20px) saturate(185%);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.95),
+    inset 0 -1px 1px rgb(255 255 255 / 0.45),
+    0 0 0 1px rgb(20 20 40 / 0.07),
+    0 12px 32px -14px rgb(30 20 60 / 0.3),
+    0 2px 6px rgb(30 20 60 / 0.06);
+}
+
+.app-glass-light::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    140deg,
+    rgb(255 255 255 / 1) 0%,
+    rgb(255 255 255 / 0.25) 30%,
+    rgb(255 255 255 / 0.05) 55%,
+    rgb(255 255 255 / 0.5) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* The AI's input bar: nearly white, as Gemini's - its glass shows at the rim. */
+.app-glass-strong {
+  background-color: rgb(255 255 255 / 0.8);
+}
+
+/* The AI's input bar as clear liquid glass (iOS 26): a light tint the page shows through, the lens
+   (the bending) done by its backdrop filter (useLiquidGlass), and light caught along the rim - brighter
+   at the top edge, softer at the sides and below, glowing faintly inwards as thick glass does. */
+.app-glass-lens {
+  background-color: rgb(255 255 255 / 0.4);
+  background-image: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.55) 0%,
+    rgb(255 255 255 / 0.1) 48%,
+    rgb(255 255 255 / 0.24) 100%
+  );
+  box-shadow:
+    inset 0 1.5px 1px rgb(255 255 255 / 0.95),
+    inset 0 -1px 1px rgb(255 255 255 / 0.65),
+    inset 1px 0 1px rgb(255 255 255 / 0.5),
+    inset -1px 0 1px rgb(255 255 255 / 0.5),
+    inset 0 0 16px rgb(255 255 255 / 0.3),
+    0 0 0 1px rgb(20 20 40 / 0.08),
+    0 14px 34px -14px rgb(30 20 60 / 0.35),
+    0 2px 8px rgb(30 20 60 / 0.08);
+}
+
+/* A round light-glass button: grows a little lighter under the finger and sinks in. */
+.app-glass-light-button {
+  transition:
+    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.18s;
+}
+
+.app-glass-light-button:active {
+  transform: scale(0.92);
+  background-color: rgb(255 255 255 / 0.85);
+}
+
+/* The dark glass button of the chat (send, voice): ink with a glassy top light. */
+.app-glass-ink {
+  position: relative;
+  isolation: isolate;
+  background-color: #151518;
+  background-image: radial-gradient(120% 90% at 50% 0%, rgb(255 255 255 / 0.32), rgb(255 255 255 / 0) 58%);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.35),
+    inset 0 -1px 2px rgb(0 0 0 / 0.4),
+    0 6px 16px -6px rgb(20 10 40 / 0.55);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-glass-ink:active {
+  transform: scale(0.92);
+}
+
+/* Iris's name and greeting, in the colours of its mark. */
+.iris-gradient-text {
+  background-image: linear-gradient(90deg, #4f7df3 0%, #8f6cf6 45%, #e0679a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* "Thinking" text: a light passing over the words. */
+@keyframes iris-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.iris-shimmer {
+  background-image: linear-gradient(90deg, #8e8e98 0%, #8e8e98 35%, #1c1c24 50%, #8e8e98 65%, #8e8e98 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: iris-shimmer 1.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iris-shimmer {
+    animation: none;
+    color: #6b6b75;
+    background: none;
+  }
+}
+
+/* The tab bar's moving lens: clear glass that stands out of the bar while the selection moves.
+   What it does to the view behind it (magnifies, bends the rim) is its backdrop-filter, set in
+   AppTabBar with the SVG filter of liquidLens.ts; here are only its surface and its shadow. */
+.app-liquid-lens {
+  /* Clear: no tint over what it shows, only a bright rim and a soft shadow. */
+  background: transparent;
+  box-shadow:
+    inset 0 1.5px 1px rgb(255 255 255 / 0.6),
+    inset 0 -1px 1.5px rgb(255 255 255 / 0.22),
+    inset 0 0 0 0.75px rgb(255 255 255 / 0.32),
+    0 8px 20px -8px rgb(0 0 0 / 0.4),
+    0 2px 5px rgb(0 0 0 / 0.14);
+  will-change: transform, opacity;
+}
+
+.app-liquid-lens::before {
+  padding: 1.25px;
+  opacity: 0.9;
+}
+
+.app-glass-icon {
+  filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.45));
+}
+
+/* On black screens the bar turns a lighter graphite, like Instagram's bar in dark mode. */
+html[data-app-theme="dark"] .app-glass {
+  background-color: rgb(58 61 66 / 0.44);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.2),
+    inset 0 -1px 1px rgb(255 255 255 / 0.06),
+    0 12px 32px -10px rgb(0 0 0 / 0.9),
+    0 2px 8px rgb(0 0 0 / 0.5);
+}
+
+html[data-app-theme="dark"] .app-glass::before {
+  opacity: 0.45;
+}
+
+html[data-app-theme="dark"] .app-glass-lens {
+  background-color: rgb(255 255 255 / 0.14);
+}
+
+/* Round tinted glass button (the AI search button on the dashboard). */
+.app-glass-button {
+  position: relative;
+  isolation: isolate;
+  background-image: radial-gradient(
+    120% 120% at 30% 15%,
+    rgb(125 176 255 / 0.96) 0%,
+    rgb(59 130 246 / 0.94) 45%,
+    rgb(29 78 216 / 0.96) 100%
+  );
+  -webkit-backdrop-filter: blur(6px) saturate(180%);
+  backdrop-filter: blur(6px) saturate(180%);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.6),
+    inset 0 -2px 5px rgb(0 0 0 / 0.2),
+    0 8px 18px -8px rgb(37 99 235 / 0.7);
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.2s;
+}
+
+.app-glass-button::after {
+  content: "";
+  position: absolute;
+  inset: 2px 7px auto;
+  height: 46%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0));
+  pointer-events: none;
+}
+
+.app-glass-button > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Chem+ mark and loading screen (src/mobile/AppLoader.tsx). */
+:root {
+  --cp-ink: #0e2537;
+  --cp-liquid: #3aa2a5;
+  --cp-hole: var(--app-page-bg);
+}
+
+html[data-app-theme="dark"] {
+  --cp-ink: #e9eff5;
+  --cp-liquid: #45bcc0;
+}
+
+@keyframes cp-breathe {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(0.93);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cp-glow {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes cp-bubble {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.6);
+  }
+  30%,
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.8);
+  }
+}
+
+@keyframes cp-slosh {
+  0%,
+  100% {
+    transform: translateX(0) skewY(0deg);
+  }
+  50% {
+    transform: translateX(-2px) skewY(-1.5deg);
+  }
+}
+
+.cp-breathe {
+  transform-origin: 50% 60%;
+  animation: cp-breathe 1.6s ease-in-out infinite;
+}
+
+.cp-glow {
+  background: radial-gradient(circle, rgb(58 162 165 / 0.35) 0%, rgb(58 162 165 / 0) 68%);
+  animation: cp-glow 1.6s ease-in-out infinite;
+}
+
+.cp-bubble {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cp-bubble 1.6s ease-in-out infinite;
+}
+
+.cp-liquid {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cp-slosh 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-glow,
+  .cp-bubble,
+  .cp-liquid {
+    animation: none;
+  }
+
+  .cp-breathe {
+    animation-duration: 2.8s;
+  }
+}
+
+/* On the cream paper theme the tab bar glass would pick up a khaki cast from the page, so it is
+   tinted neutral and a little denser there (the icons on it are white). */
+html.paper .app-glass {
+  background-color: rgb(28 28 32 / 0.38);
+  -webkit-backdrop-filter: blur(16px) saturate(125%) brightness(0.93);
+  backdrop-filter: blur(16px) saturate(125%) brightness(0.93);
+}
+
+/* Home greeting wash (src/components/dashboard/DashboardContent.tsx): the tint and its blobs
+   would otherwise stop on a hard line where the band ends, so they are faded out well before
+   the edge and reach nothing by the bottom. */
+.app-hero-fade {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgb(0 0 0) 0%,
+    rgb(0 0 0 / 0.92) 38%,
+    rgb(0 0 0 / 0.6) 62%,
+    rgb(0 0 0 / 0.24) 82%,
+    rgb(0 0 0 / 0) 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    rgb(0 0 0) 0%,
+    rgb(0 0 0 / 0.92) 38%,
+    rgb(0 0 0 / 0.6) 62%,
+    rgb(0 0 0 / 0.24) 82%,
+    rgb(0 0 0 / 0) 100%
+  );
+}
+
+/* Home greeting sky (src/components/dashboard/DashboardContent.tsx): the sky and its clouds at
+   full strength behind the greeting, fading out below it so they never stop on a line. */
+.app-hero-sky {
+  -webkit-mask-image: linear-gradient(to bottom, rgb(0 0 0) 0%, rgb(0 0 0) 58%, rgb(0 0 0 / 0.45) 80%, rgb(0 0 0 / 0) 100%);
+  mask-image: linear-gradient(to bottom, rgb(0 0 0) 0%, rgb(0 0 0) 58%, rgb(0 0 0 / 0.45) 80%, rgb(0 0 0 / 0) 100%);
+}
+
+/* Account header (src/components/account/AccountSettings.tsx): frosted glass over the plum
+   gradient - deeper and warmer than the home panel, with a bright top edge and a dark foot. */
+.app-glass-hero {
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(160%);
+  background-image: linear-gradient(
+    165deg,
+    rgb(255 255 255 / 0.26) 0%,
+    rgb(255 255 255 / 0.08) 30%,
+    rgb(0 0 0 / 0.04) 62%,
+    rgb(0 0 0 / 0.16) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.5),
+    inset 0 -1px 0 rgb(255 255 255 / 0.18),
+    inset 0 -24px 40px -30px rgb(0 0 0 / 0.55);
+}
+
+/* Home greeting (src/components/dashboard/DashboardContent.tsx): a light Liquid Glass panel with
+   rounded corners, a soft highlight inside and the same gradient hairline as the tab bar - clear
+   enough for the clouds behind it to drift by as soft shapes. */
+.app-glass-panel {
+  position: relative;
+  isolation: isolate;
+  background-color: rgb(255 255 255 / 0.36);
+  background-image: linear-gradient(
+    150deg,
+    rgb(255 255 255 / 0.62) 0%,
+    rgb(255 255 255 / 0.22) 40%,
+    rgb(255 255 255 / 0.06) 68%,
+    rgb(255 255 255 / 0.34) 100%
+  );
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  backdrop-filter: blur(10px) saturate(160%);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.95),
+    inset 0 -1px 1px rgb(0 0 0 / 0.03),
+    0 18px 40px -22px rgb(20 20 40 / 0.4),
+    0 2px 8px rgb(0 0 0 / 0.05);
+}
+
+.app-glass-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 1.25px;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.95) 0%,
+    rgb(255 255 255 / 0.3) 26%,
+    rgb(0 0 0 / 0.06) 52%,
+    rgb(255 255 255 / 0.35) 76%,
+    rgb(255 255 255 / 0.9) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.app-glass-panel > * {
+  position: relative;
+  z-index: 2;
+}
+
+html[data-app-theme="dark"] .app-glass-panel {
+  background-color: rgb(58 61 66 / 0.4);
+  background-image: linear-gradient(
+    150deg,
+    rgb(255 255 255 / 0.14) 0%,
+    rgb(255 255 255 / 0.04) 45%,
+    rgb(255 255 255 / 0) 70%,
+    rgb(255 255 255 / 0.08) 100%
+  );
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.2),
+    0 18px 40px -22px rgb(0 0 0 / 0.85);
+}
+
+html[data-app-theme="dark"] .app-glass-panel::before {
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.5) 0%,
+    rgb(255 255 255 / 0.1) 30%,
+    rgb(255 255 255 / 0.04) 55%,
+    rgb(255 255 255 / 0.45) 100%
+  );
+}
+
+/* Message composer (src/components/messages/MessageComposer.tsx): a light Liquid Glass pill that
+   floats over the conversation, after Instagram's composer. */
+.app-glass-composer {
+  position: relative;
+  isolation: isolate;
+  background-color: rgb(247 247 247 / 0.7);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.6) 0%, rgb(255 255 255 / 0.12) 55%, rgb(255 255 255 / 0.3) 100%);
+  -webkit-backdrop-filter: blur(18px) saturate(190%);
+  backdrop-filter: blur(18px) saturate(190%);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.95),
+    inset 0 -1px 1px rgb(0 0 0 / 0.04),
+    0 12px 30px -14px rgb(20 20 40 / 0.35),
+    0 1px 3px rgb(0 0 0 / 0.06);
+}
+
+.app-glass-composer::before,
+.app-glass-send::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.95) 0%,
+    rgb(0 0 0 / 0.05) 35%,
+    rgb(0 0 0 / 0.06) 65%,
+    rgb(255 255 255 / 0.8) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.app-glass-composer > * {
+  position: relative;
+  z-index: 2;
+}
+
+html[data-app-theme="dark"] .app-glass-composer {
+  background-color: rgb(44 44 48 / 0.62);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.12) 0%, rgb(255 255 255 / 0.02) 55%, rgb(255 255 255 / 0.05) 100%);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.18),
+    inset 0 -1px 1px rgb(255 255 255 / 0.05),
+    0 14px 34px -14px rgb(0 0 0 / 0.9);
+}
+
+html[data-app-theme="dark"] .app-glass-composer::before {
+  background: linear-gradient(
+    135deg,
+    rgb(255 255 255 / 0.45) 0%,
+    rgb(255 255 255 / 0.06) 35%,
+    rgb(255 255 255 / 0.04) 65%,
+    rgb(255 255 255 / 0.3) 100%
+  );
+}
+
+/* The round button inside the composer. */
+.app-glass-bead {
+  background-color: rgb(255 255 255 / 0.95);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 1),
+    0 1px 2px rgb(0 0 0 / 0.08),
+    0 0 0 0.5px rgb(0 0 0 / 0.04);
+}
+
+html[data-app-theme="dark"] .app-glass-bead {
+  background-color: rgb(255 255 255 / 0.12);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    0 1px 2px rgb(0 0 0 / 0.4);
+}
+
+/* The purple send capsule. */
+.app-glass-send {
+  position: relative;
+  isolation: isolate;
+  background-color: #6d3df1;
+  background-image: radial-gradient(130% 150% at 28% 8%, #9b7bff 0%, #6d3df1 52%, #5b2ee0 100%);
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 0.5),
+    inset 0 -2px 4px rgb(40 0 120 / 0.25),
+    0 6px 14px -6px rgb(109 61 241 / 0.75);
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s;
+}
+
+.app-glass-send::before {
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.7) 0%, rgb(255 255 255 / 0.08) 45%, rgb(255 255 255 / 0.35) 100%);
+}
+
+.app-glass-send::after {
+  content: "";
+  position: absolute;
+  inset: 2px 8px auto;
+  height: 44%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.4), rgb(255 255 255 / 0));
+  pointer-events: none;
+}
+
+.app-glass-send > * {
+  position: relative;
+  z-index: 2;
+}
+
+.app-glass-send:active {
+  transform: scale(0.92);
+}
+
+.app-glass-send:disabled {
+  opacity: 0.6;
+}
+
+/* 17px like the reference; the phone rule above forces 16px on every field. */
+textarea.app-composer-input {
+  font-size: 17px !important;
+}
+
+.app-glass-button:active {
+  transform: scale(0.92);
+}
+
+.app-glass-button:disabled {
+  opacity: 0.5;
+}
+
+/* ChemAI: Iris's screens (the chat, the menu, search, the Library, notebooks, settings) in
+   Google Sans, as the Gemini app. */
+.iris-ui {
+  font-family: var(--font-gsans), "Google Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Iris's fields keep their drawn size (the phone rule above forces 16px on every field). */
+.iris-ui .iris-input-32 {
+  font-size: 32px !important;
+}
+.iris-ui .iris-input-17 {
+  font-size: 17px !important;
+}

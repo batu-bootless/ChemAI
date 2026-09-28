@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Palette shared by the launcher icon and the splash screen. -->
+<resources>
+    <!-- Website palette (illustrae-clone: Header.tsx, globals.css, favicon). -->
+    <color name="brand_bordo">#5B0F12</color>
+    <color name="brand_purple">#6D445E</color>
+    <!-- White, the ground of the ChemAI wordmark (scripts/brand-icons.mjs). -->
+    <color name="icon_background">#FFFFFF</color>
+    <color name="text_primary">#111827</color>
+    <color name="text_secondary">#6B7280</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_muted">#F3F4F6</color>
+</resources>
