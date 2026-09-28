@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:mobile": "node scripts/dev-mobile.mjs",
     "build": "next build",
     "lint": "eslint",
     "build:app": "node scripts/generate-dark-theme.mjs && node scripts/copy-rdkit.mjs && node scripts/copy-pdfjs.mjs && next build && node scripts/app-routes.mjs && cap sync android",
