@@ -2,11 +2,14 @@
 // Android's own Google account sheet (Credential Manager) and hands the ID token to Supabase.
 //
 // The sheet only works for a build registered in the Google console (its package and signing
-// SHA-1) and on a phone with a Google account. Otherwise sign-in goes through ChemPlus's own Google
-// sign-in on the web - Supabase's Google login, the one chemplus.com.tr uses - in the phone's
-// browser, which comes back to the app at <package>://auth-callback with a code the app exchanges
-// for the session (PKCE: the code is worthless without the verifier this app keeps). That address
-// must be in Supabase's redirect list (README, "Android kimliği").
+// SHA-1) and on a phone with a Google account; an unregistered build often hears "cancelled" after
+// the account is chosen, not "not configured". Only the Play app (com.chemai.app) is registered.
+// Every other build (the test APKs), and the Play app when the sheet cannot be used, signs in
+// through ChemPlus's own Google sign-in on the web - Supabase's Google login, the one
+// chemplus.com.tr uses - in the phone's browser, which comes back to the app at
+// <package>://auth-callback with a code the app exchanges for the session (PKCE: the code is
+// worthless without the verifier this app keeps). That address must be in Supabase's redirect
+// list (README, "Android kimliği").
 import { App } from "@capacitor/app";
 import { createClient } from "@/lib/supabase/client";
 import { textFor } from "./i18n";
@@ -28,8 +31,11 @@ export type GoogleSignInResult =
 
 /** The account sheet cannot be used here: this build is not registered, or the phone has no Google account. */
 const SHEET_UNAVAILABLE = new Set(["NOT_CONFIGURED", "NO_ACCOUNT"]);
+/** The build registered for the account sheet in the Google console (README, "Android kimliği"). */
+const REGISTERED_APP = "com.chemai.app";
 
 export async function signInWithGoogleNative(): Promise<GoogleSignInResult> {
+  if ((await App.getInfo()).id !== REGISTERED_APP) return signInWithGoogleInBrowser();
   // Google puts the hashed nonce into the ID token; Supabase checks it against the raw one.
   const nonce = toHex(crypto.getRandomValues(new Uint8Array(32)));
 
@@ -156,7 +162,15 @@ export async function signInWithGoogleInBrowser(): Promise<GoogleSignInResult> {
   try {
     await openExternal(data.url);
     const url = await callback.result;
-    if (!url) return { ok: false, error: "", canceled: true };
+    if (!url) {
+      return {
+        ok: false,
+        error: textFor(
+          "Google girişi tamamlanıp uygulamaya dönülmedi. Tekrar deneyin ya da e-postanızla giriş yapın.",
+          "Google sign-in didn't come back to the app. Try again or sign in with your email."
+        ),
+      };
+    }
     return await finishWithCallback(url);
   } finally {
     callback.stop();

@@ -100,7 +100,7 @@ npx supabase functions deploy iris-chat --no-verify-jwt
 - İmzalama: ChemAI'ın **kendi yükleme anahtarı** (ChemPlus'ınki değil), 27 Eylül 2026'da oluşturuldu: `keystore/chemai-upload.jks` + `keystore.properties` (ikisi de git dışı, **mutlaka yedekleyin**). SHA-1: `B2:6F:FF:FE:F2:2C:EB:84:69:0E:B5:E1:23:4B:D7:01:A7:E7:43:68`.
 - Google ile giriş için Google Cloud'da paket `com.chemai.app` ve yeni anahtarın SHA-1'iyle (`.\scripts\print-fingerprints.ps1`) bir Android OAuth istemcisi gerekir; Play App Signing anahtarının SHA-1'i için ikinci bir istemci. Supabase'de değişiklik gerekmez.
 - "Google ile devam et" düğmesi varsayılan olarak açıktır (`src/mobile/auth/googleFeatureFlag.ts`). Kayıtlı olmayan bir derlemede `NEXT_PUBLIC_FEATURE_GOOGLE_SIGNIN=false` ile gizlenir.
-- **Kayıtsız derlemede Google girişi:** Telefonun Google penceresi "kayıtlı değil" (`NOT_CONFIGURED`) ya da "Google hesabı yok" (`NO_ACCOUNT`) derse giriş kendiliğinden tarayıcıya geçer (`src/mobile/googleSignIn.ts`).
+- **Kayıtsız derlemede Google girişi** (`src/mobile/googleSignIn.ts`): Telefonun Google penceresi yalnızca Play uygulamasında (`com.chemai.app`) kullanılır. Kayıtsız bir derlemede pencere hesap seçildikten sonra çoğu zaman "iptal edildi" döner. Bu yüzden test APK'ları doğrudan tarayıcıya gider; Play uygulaması da pencere "kayıtlı değil" (`NOT_CONFIGURED`) ya da "Google hesabı yok" (`NO_ACCOUNT`) derse tarayıcıya geçer.
   - Tarayıcıda ChemPlus'ın web'deki Google girişi (Supabase'in Google girişi, chemplus.com.tr'ninkiyle aynı) açılır.
   - Giriş bitince uygulamaya `<paket>://auth-callback` adresiyle dönülür; uygulama gelen kodu oturuma çevirir (PKCE).
   - Böylece paket adı ve SHA-1 kaydı gerekmez; test APK'ları ve bulut oturumlarında derlenenler de Google ile girebilir.
