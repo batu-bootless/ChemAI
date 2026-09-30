@@ -777,8 +777,8 @@ function ActionsPage() {
       </Card>
       <Note>
         {l(
-          "Açıkken fotoğraf okunmak için Google Gemini'ye gönderilir; kapalıyken yalnızca telefonda okunur ve yapı çizimleri okunamaz.",
-          "When on, the photo is sent to Google Gemini to be read; when off, it is read on the phone only and drawn structures can't be read."
+          "Açıkken fotoğraf okunmak için bir görsel yapay zekâya (Groq) gönderilir; kapalıyken yalnızca telefonda okunur ve yapı çizimleri okunamaz.",
+          "When on, the photo is sent to a vision AI (Groq) to be read; when off, it is read on the phone only and drawn structures can't be read."
         )}
       </Note>
 

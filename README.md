@@ -24,22 +24,22 @@ Uygulama ücretsizdir; ödeme ve reklam yoktur. Her sayfa hesap ister (İris sit
 
 ### Kart yanıtlar
 
-İris'in yanıtı ekranda bir kartta gösterilir; hesap motorunun sonuçları kendi kartlarıyla gelir. Yapay zekâdan artık kart biçimi (JSON) istenmez: her yanıtı uzun bir JSON bloğu yapması yanıtları yavaşlatıyor, fotoğraflı sorularda da doğruluğu düşürüyordu. Yanıt yine de ` ```iris ` JSON kartları içerirse (eski sohbetler), `src/lib/ai/answerCards.ts` bunları okur ve `src/components/ai/AnswerCards.tsx` kartları çizer: sonuç, soru-cevap, molekül, tepkime, formül, adımlar, not. Molekül kartları hesap motorunun `molecule` aracından (RDKit; ad verilmişse PubChem), tepkimeler denkleştirme motorundan geçer (`src/lib/ai/cardChecks.ts`). Motor İris'in katsayılarını düzeltirse kartta "Motor düzeltti" yazar. Sesli sohbette kart yoktur; dinle/kopyala ve sohbet geçmişi kartların düz metnini kullanır (`answerText`).
+- **Yanıtın kendisi:** İris yanıtını düz ve kısa yazar; ekranda bir kartta görünür.
+- **Ek kartlar:** Soru organik yapı, tepkime, formül içeriyorsa ya da fotoğraflıysa (`wantsCards`), uygulama kısa bir kart kuralı (`CARD_RULES`, `src/lib/ai/answerCards.ts`) ekler. Yapay zekâ yanıtın sonuna küçük bir ` ```iris ` JSON bloğu koyar: molekül, tepkime (organik ve anorganik), formül ve fotoğraftaki her soru için soru-cevap kartları. En çok 6 kart olur.
+- **Neden kısa:** Önceki sürüm yanıtın tamamını JSON olarak istiyordu; bu, yanıtları uzatıp yavaşlatıyordu.
+- **Doğrulama** (`src/lib/ai/cardChecks.ts`): `src/components/ai/AnswerCards.tsx` kartları çizer. Molekül kartları hesap motorunun `molecule` aracından (RDKit; ad verilmişse PubChem), tepkimeler denkleştirme motorundan geçer. Motor İris'in katsayılarını düzeltirse kartta "Motor düzeltti" yazar.
+- **Sesli sohbet:** Kart yoktur; dinle/kopyala ve sohbet geçmişi kartların düz metnini kullanır (`answerText`).
 
 ### Görsel yapay zekâ (fotoğraftan yapı ve tepkime okuma)
 
-Telefonun metin okuyucusu (ML Kit) yapı çizimlerini ve tepkime oklarını okuyamaz. Fotoğraf bu yüzden, ayarlarda "Görsel yapay zekâ ile oku" açıksa (varsayılan: kapalı; ayar `visionModel`), `supabase/functions/iris-vision` işlevine gider. İşlevin Gemini anahtarı yokken açık olması yalnızca telefonun kendi okumasını geciktirir. İşlev fotoğrafı Gemini'nin görsel modeline gösterir ve soruları, yapıları (SMILES), tepkimeleri ve formülleri okur; soruyu çözmez. Uygulama bu okumayla soruyu her zamanki gibi çözer; yapılar ve denklemler cihazda doğrulanır. İşlev kurulu değilse uygulama eskisi gibi yalnızca telefonda okur (1 saat sonra yeniden dener).
+Telefonun metin okuyucusu (ML Kit) yapı çizimlerini ve tepkime oklarını okuyamaz. Fotoğraf bu yüzden, ayarlarda "Görsel yapay zekâ ile oku" açıksa (varsayılan: açık; ayar `visionModel`), `supabase/functions/iris-vision` işlevine gider.
 
-Bir kez kurulum (bilgisayarda, proje klasöründe):
+- **Ne yapar:** İşlev fotoğrafı bir görsel modele gösterir. Model soruları, şıkları, yapıları (SMILES), tepkimeleri ve formülleri okur; soruyu çözmez.
+- **Modeller** (`supabase/functions/_shared/vision.ts`): önce Groq'taki `qwen3.8-27b`, sonra Gemini anahtarı varsa Gemini. Liste `VISION_MODELS` ile değiştirilebilir.
+- **Ölçüm** (30 Eylül 2026, çizili Friedel-Crafts şeması, aspirinin iskelet formülü ve bir demir oksit denklemi içeren test sayfası): qwen 2–4 sn'de her şeyi doğru okudu. Bir fotoğraf ~2.700 token harcıyor; Groq'un ücretsiz katmanı model başına dakikada 8.000 token ve günde 1.000 istek veriyor. NVIDIA'nın görsel modelleri ya yanıt vermedi ya da resmi görmedi, kullanılmıyor.
+- **Sonra:** Uygulama bu okumayla soruyu her zamanki gibi çözer; yapılar ve denklemler cihazda doğrulanır. İşlev kurulu değilse ya da yoğunsa uygulama yalnızca telefonda okur.
 
-```powershell
-npx supabase login
-npx supabase link --project-ref cgdwufmxbyhoypbcxgfw
-npx supabase secrets set GEMINI_API_KEY=<Gemini API anahtarı>
-npx supabase functions deploy iris-vision --no-verify-jwt
-```
-
-`--no-verify-jwt`: işlev çağıranın oturumunu kendisi denetler (yalnızca giriş yapmış kullanıcılar). İşlev modelleri sırayla dener: biri yoğunsa (429/503) ya da yoksa (404) sıradakine geçer. İsteğe bağlı: `GEMINI_MODELS`, virgülle ayrılmış model listesi (varsayılan `gemini-flash-latest,gemini-flash-lite-latest`). Görsel okuma Gemini kotasından yer; fotoğraf Google'a gider (gizlilik politikası ve Play Console'daki veri güvenliği formu buna göre güncellenmeli).
+Kurulum: anahtarlar (`GROQ_API_KEY`, isteğe bağlı `GEMINI_API_KEY`) işlevin gizli ayarlarında ya da Vault'ta (aşağıda "Yedek yapay zekâ"), sonra `npx supabase functions deploy iris-vision --no-verify-jwt`. `--no-verify-jwt`: işlev çağıranın oturumunu kendisi denetler (yalnızca giriş yapmış kullanıcılar). Fotoğraf Groq'a (gerekirse Google'a) gider; gizlilik politikası buna göre yazıldı, Play Console'daki veri güvenliği formu da güncellenmeli.
 
 ### Yoğunluk ve ücretsiz Gemini kotası
 

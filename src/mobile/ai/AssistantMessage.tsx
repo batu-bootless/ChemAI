@@ -8,7 +8,6 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Check, Copy, Loader2, Square, Volume2, Zap } from "lucide-react";
 import { LogoMark } from "@/mobile/brand/Wordmark";
-import RichText from "@/components/ai/RichText";
 import { AnswerCards, CardsPending, TextCard } from "@/components/ai/AnswerCards";
 import ReportAiReplyButton from "@/components/ai/ReportAiReplyButton";
 import { answerText, parseAnswer } from "@/lib/ai/answerCards";
@@ -147,8 +146,9 @@ export default function AssistantMessage({ turn, speakingId, onSpeak }: { turn: 
           <div className="relative text-[#1C1C22]">
             {speaking && <SpeakingTag label={l("Okunuyor", "Reading aloud")} />}
             {answer.cards.length > 0 || answer.incomplete ? (
+              // The answer in its card, then the cards of its molecules, reactions and questions.
               <div className="space-y-2.5">
-                {answer.text && <RichText text={answer.text} ink />}
+                {answer.text && <TextCard text={answer.text} />}
                 {answer.cards.length > 0 ? <AnswerCards cards={answer.cards} /> : <CardsPending />}
               </div>
             ) : (

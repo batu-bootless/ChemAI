@@ -74,8 +74,8 @@ export default function PrivacyPage() {
           <p>
             <strong>Kamera ve fotoğraflar:</strong> bir soruyu fotoğrafla sorduğunuzda görüntüdeki metin ve baskın
             renk telefonunuzda okunur. İris ayarlarındaki &quot;Görsel yapay zekâ ile oku&quot; açıksa (varsayılan olarak
-            kapalıdır) fotoğraf, içindeki soruların, yapı çizimlerinin ve tepkimelerin okunması için ayrıca
-            sunucumuz üzerinden Google Gemini API&apos;ye gönderilir; sunucumuzda saklanmaz. Bu ayar kapalıysa fotoğrafın
+            açıktır) fotoğraf, içindeki soruların, yapı çizimlerinin ve tepkimelerin okunması için ayrıca
+            sunucumuz üzerinden Groq API&apos;sine (gerekirse Google Gemini API&apos;ye) gönderilir; sunucumuzda saklanmaz. Bu ayar kapalıysa fotoğrafın
             kendisi gönderilmez, yalnızca telefonda okunan metin ve renk sorunuza eklenir.{" "}
             <strong>Mikrofon:</strong> yalnızca sesli sohbeti ya da dikteyi siz başlattığınızda, izninizle kullanılır;
             konuşmanız telefonunuzun konuşma tanıma hizmetiyle metne çevrilir.{" "}
@@ -101,12 +101,13 @@ export default function PrivacyPage() {
             </li>
             <li><strong>Vercel:</strong> chemplus.com.tr sunucuları; yapay zekâ, sesli yanıt ve hesap silme istekleri bu sunucular üzerinden işlenir.</li>
             <li>
-              <strong>Google:</strong> Google ile giriş; İris&apos;e gönderdiğiniz metinler yanıt üretilmesi, görsel yapay zekâ
-              açıksa fotoğraflarınız okunması için Google Gemini API&apos;ye gönderilir.
+              <strong>Google:</strong> Google ile giriş; İris&apos;e gönderdiğiniz metinler yanıt üretilmesi için Google Gemini
+              API&apos;ye gönderilir.
             </li>
             <li>
-              <strong>Groq ve NVIDIA:</strong> Google Gemini yoğun ya da ulaşılamaz olduğunda İris&apos;e gönderdiğiniz metinler,
-              yanıt üretilmesi için Groq ve NVIDIA API&apos;lerindeki yapay zekâ modellerine gönderilir.
+              <strong>Groq ve NVIDIA:</strong> görsel yapay zekâ açıksa fotoğraflarınız okunmak için Groq&apos;a gönderilir.
+              Google Gemini yoğun ya da ulaşılamaz olduğunda İris&apos;e gönderdiğiniz metinler, yanıt üretilmesi için Groq ve
+              NVIDIA API&apos;lerindeki yapay zekâ modellerine gönderilir.
             </li>
             <li><strong>Microsoft Azure ve Google:</strong> sesli yanıt açıksa, İris&apos;in yanıt metni sese çevrilmek için bu hizmetlere gönderilir.</li>
             <li>

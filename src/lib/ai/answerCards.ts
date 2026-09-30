@@ -239,5 +239,36 @@ export function answerText(reply: string): string {
   return lines.join("\n\n");
 }
 
-/** The card-format block earlier versions sent with a question: left out when a stored message is read back. */
 export const CARD_OPEN = "⟦CHEMPLUS-KART⟧";
+
+/**
+ * The card rules, sent with a text question about structures, reactions, formulas or a photo (never
+ * in voice mode, nor with small talk). The answer itself stays plain text - asking for the whole
+ * answer as JSON made every reply long and slow - and a short card block follows it: the molecules
+ * (drawn and checked by RDKit), the reactions (balanced by the engine), the formulas, and each
+ * question of a photo with its answer.
+ */
+export const CARD_RULES = `
+${CARD_OPEN} KARTLAR: Yanıtını her zamanki gibi düz ve kısa yaz. Yanıtta organik yapı, tepkime, formül ya da görseldeki bir soru varsa EN SONA tek bir kısa \`\`\`iris bloğu ekle: {"kartlar":[…]} (en çok 6 kart; açıklamayı kartlarda tekrar etme). Kart türleri:
+{"tur":"soru","no":"1","soru":"kısa","secenek":"C","cevap":"kısa"} — görseldeki her soru
+{"tur":"molekul","ad":"…","smiles":"…","rol":"reaktan|ürün|…"} — her organik yapı; emin olmadığın SMILES'ı yazma
+{"tur":"tepkime","denklem":"Fe2O3 + 3CO -> 2Fe + 3CO2","tip":"redoks|…","kosullar":"…","gozlem":"…","reaktanlar":["SMILES"],"urunler":["SMILES"]} — anorganikte ASCII denklem (yük: Fe^3+), organikte reaktan ve ürün SMILES
+{"tur":"formul","ad":"…","ifade":"PV = nRT"}
+⟦/CHEMPLUS-KART⟧`;
+
+/** Words and signs of a question the cards help with: structures, reactions, formulas. */
+const CARD_TOPIC =
+  /tepkime|reaksiyon|sentez|mekanizma|yapı|smiles|molekül|bileşi[kğ]|organik|anorganik|inorganik|denkle|formül|ürün|reaktan|izomer|iupac|ester|alken|alkan|alkin|benzen|aromatik|fonksiyonel|polimer|redoks|çökel|reaction|synthes|mechanism|structure|molecule|compound|equation|formula|isomer|→|->|⇌|=>/i;
+/** A chemical formula: element symbols with a count or with two symbols at least (H2O, NaCl, CH3COOH). */
+function isFormula(word: string): boolean {
+  return /^(?:[A-Z][a-z]?\d*)+$/.test(word) && (/\d/.test(word) || (word.match(/[A-Z]/g) ?? []).length >= 2);
+}
+
+/**
+ * Whether a text question gets the card rules: a photo always, otherwise structures, reactions or
+ * formulas. A wrong "yes" costs little: with nothing to put on a card the AI adds none.
+ */
+export function wantsCards(question: string, hasImage: boolean): boolean {
+  if (hasImage || CARD_TOPIC.test(question)) return true;
+  return question.split(/[^A-Za-z0-9]+/).some(isFormula);
+}

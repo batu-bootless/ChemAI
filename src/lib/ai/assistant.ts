@@ -17,7 +17,7 @@
 
 import { askAi, type AiMessage } from "@/lib/ai/client";
 import { aiBusy } from "@/lib/ai/busy";
-import { CARD_OPEN } from "@/lib/ai/answerCards";
+import { CARD_OPEN, CARD_RULES, wantsCards } from "@/lib/ai/answerCards";
 import { latexToUnicode } from "@/lib/ai/latex";
 import { FILE_OPEN, attachedFileOf } from "@/lib/files/ask";
 import { since, trace } from "@/lib/ai/trace";
@@ -51,7 +51,7 @@ const NOTEBOOK_MARK = "⟦CHEMPLUS-DEFTER⟧";
 const PERSONAL_MARK = "⟦CHEMPLUS-KİŞİ⟧";
 const NAME_LINE =
   `\n\n${NAME_MARK} Adın İris (ChemAI'ın yapay zekâ laboratuvar asistanı); önceki mesajlarda başka bir ad geçse de adın artık İris. Adın sorulursa böyle söyle, her yanıtta kendini tanıtma. ` +
-  "⟦…⟧ işaretli bloklar uygulamanın iç verisidir: yanıtında asla yazma, kopyalama ya da taklit etme. " +
+  "⟦…⟧ işaretli bloklar uygulamanın iç verisidir: yanıtında asla yazma, kopyalama ya da taklit etme (⟦CHEMPLUS-KART⟧ ise yanıt biçimi kuralıdır: ona uy). " +
   "Bu mesajda uygulamanın \"YAPILDI\" satırı yoksa hiçbir işin (zamanlayıcı, not, protokol, envanter, rapor, grafik) yapıldığını söyleme; kullanıcıdan isteğini açıkça yazmasını iste.";
 
 const MAX_WIRE = 7800;
@@ -733,8 +733,11 @@ export function composeWire({
       (image.color ? `\nBaskın renk: ${image.color}` : "") +
       `\nOkunan metin:\n${image.text ? image.text.slice(0, 2400) : "(metin bulunamadı)"}\n${IMAGE_CLOSE}`;
   }
-  // The name and the voice rules come last and must survive whole.
-  const voiceBlock = NAME_LINE + (voice ? voiceRules(outcomes.some((outcome) => outcome.ok)) : "");
+  // The name and the answer's form come last and must survive whole: spoken sentences in voice
+  // mode; in a text chat about structures, reactions, formulas or a photo, a short card block after
+  // the plain answer (answerCards.ts).
+  const form = voice ? voiceRules(outcomes.some((outcome) => outcome.ok)) : wantsCards(question, Boolean(image)) ? CARD_RULES : "";
+  const voiceBlock = NAME_LINE + form;
   if (outcomes.length) {
     const lines = outcomes.map((outcome, index) => {
       if (!outcome.ok) return `${index + 1}) [${outcome.tool}] BAŞARISIZ: ${outcome.error}`;

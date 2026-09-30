@@ -29,7 +29,7 @@ const MISSING_KEY = "chemai:vision-missing-until";
 const MISSING_PAUSE_MS = 60 * 60 * 1000;
 const OFFLINE_PAUSE_MS = 10 * 60 * 1000;
 const BUSY_PAUSE_MS = 2 * 60 * 1000;
-const TIMEOUT_MS = 40_000;
+const TIMEOUT_MS = 30_000;
 
 function str(value: unknown, max: number): string | undefined {
   if (typeof value !== "string") return undefined;

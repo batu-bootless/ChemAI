@@ -30,11 +30,7 @@ export interface IrisPrefs {
   saveHistory: boolean;
   /** Read every answer aloud. */
   autoSpeak: boolean;
-  /**
-   * Send photos to the vision model (visionAi.ts) so drawn structures and schemes can be read. Off
-   * by default: until the iris-vision function has a Gemini key it only delays the phone's own
-   * reading. (Named anew: the "on" an earlier default wrote to phones does not carry over.)
-   */
+  /** Send photos to the vision model (visionAi.ts, qwen on Groq) so drawn structures and schemes can be read. */
   visionModel: boolean;
 }
 
@@ -58,7 +54,7 @@ const PREFS_KEY = "chemai:iris-prefs:v1";
 const AUTO_SPEAK_KEY = "chemplus:ai-read-aloud";
 
 export const DEFAULT_PERSONAL: PersonalContext = { enabled: true, level: "", field: "", style: "", lab: "", about: "" };
-export const DEFAULT_PREFS: IrisPrefs = { verify: true, safety: true, actions: true, saveHistory: true, autoSpeak: false, visionModel: false };
+export const DEFAULT_PREFS: IrisPrefs = { verify: true, safety: true, actions: true, saveHistory: true, autoSpeak: false, visionModel: true };
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
