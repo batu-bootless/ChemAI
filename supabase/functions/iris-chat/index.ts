@@ -118,11 +118,20 @@ const summary = (row: { id: string; title?: string; surface?: string; updated_at
   updatedAt: Date.parse(row.updated_at ?? "") || Date.now(),
 });
 
-/** The turn saved as the website saves it; null when the history tables do not take it. */
-async function save(user: { id: string; token: string }, conversation: { id?: unknown; surface?: unknown }, question: string, reply: string): Promise<Summary | null> {
+/**
+ * The turn saved as the website saves it; null when the history tables do not take it. A new
+ * conversation keeps Iris's guide (`context`) as the website's do: the website answers its later
+ * turns with the guide stored there.
+ */
+async function save(
+  user: { id: string; token: string },
+  conversation: { id?: unknown; surface?: unknown },
+  question: string,
+  reply: string,
+  context: string | undefined
+): Promise<Summary | null> {
   try {
     let row: { id: string; title?: string; surface?: string; updated_at?: string } | null = null;
-    let created = false;
     if (typeof conversation.id === "string" && conversation.id) {
       const res = await rest(user.token, `ai_conversations?id=eq.${encodeURIComponent(conversation.id)}&select=id,title,surface,updated_at`, { method: "GET" });
       row = res.ok ? ((await res.json())[0] ?? null) : null;
@@ -130,13 +139,16 @@ async function save(user: { id: string; token: string }, conversation: { id?: un
     } else {
       const title = question.split("⟦")[0].replace(/\s+/g, " ").trim().slice(0, 80) || "Sohbet";
       const surface = typeof conversation.surface === "string" ? conversation.surface.slice(0, 120) : "";
-      const res = await rest(user.token, "ai_conversations", { method: "POST", body: JSON.stringify({ user_id: user.id, title, surface }) });
-      row = res.ok ? ((await res.json())[0] ?? null) : null;
-      if (!row) {
+      const res = await rest(user.token, "ai_conversations", {
+        method: "POST",
+        body: JSON.stringify({ user_id: user.id, title, surface, context: context ?? "" }),
+      });
+      if (!res.ok) {
         console.error("history: conversation not created", res.status, (await res.text().catch(() => "")).slice(0, 300));
         return null;
       }
-      created = true;
+      row = (await res.json())[0] ?? null;
+      if (!row) return null;
     }
     const messages = [
       { conversation_id: row.id, role: "user", content: question },
@@ -144,8 +156,8 @@ async function save(user: { id: string; token: string }, conversation: { id?: un
     ];
     const res = await rest(user.token, "ai_messages", { method: "POST", body: JSON.stringify(messages), headers: { Prefer: "return=minimal" } });
     if (!res.ok) {
+      // The tables let a user add and change rows, not delete them: a new conversation stays, empty.
       console.error("history: messages not saved", res.status, (await res.text().catch(() => "")).slice(0, 300));
-      if (created) await rest(user.token, `ai_conversations?id=eq.${row.id}`, { method: "DELETE" });
       return null;
     }
     const touched = await rest(user.token, `ai_conversations?id=eq.${row.id}`, { method: "PATCH", body: JSON.stringify({ updated_at: new Date().toISOString() }) });
@@ -195,7 +207,7 @@ Deno.serve(async (req) => {
   }
   const conversation =
     body.conversation && typeof body.conversation === "object"
-      ? await save(user, body.conversation as { id?: unknown; surface?: unknown }, messages[messages.length - 1].content, result.reply)
+      ? await save(user, body.conversation as { id?: unknown; surface?: unknown }, messages[messages.length - 1].content, result.reply, context)
       : undefined;
   return json({ reply: result.reply, model: result.model, ...(conversation !== undefined ? { conversation } : {}) });
 });
