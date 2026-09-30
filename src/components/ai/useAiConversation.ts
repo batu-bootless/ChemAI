@@ -58,6 +58,8 @@ export interface ChatTurn {
   quick?: boolean;
   /** Assistant: the engine's cards are in, the AI's words are still being written. */
   pending?: boolean;
+  /** Assistant, pending: the AI was busy; asked again in this many seconds. */
+  waiting?: number;
   /** Assistant: the answer's numbers checked against the engine (Kanıt denetimi). */
   verification?: Verification | null;
   /** Assistant: hazards and incompatible pairs in a lab question (Güvenlik taraması). */
@@ -396,6 +398,11 @@ export function useAiConversation({
         const asked = performance.now();
         // Spoken replies get a little more room to sound like a person, not a report.
         const temperature = opts.voice ? 0.55 : 0.35;
+        // The AI busy (the free limits are per minute): the answer's bubble says it waits, then asks again.
+        const onWait = (seconds: number) => {
+          if (view !== viewRef.current) return;
+          setMessages((prev) => prev.map((turn) => (turn.id === answerId && turn.pending ? { ...turn, waiting: seconds || undefined } : turn)));
+        };
         // The answer shows (and voice mode speaks it) as it is written; the screen catches up at
         // most every few frames.
         let shown = "";
@@ -424,6 +431,7 @@ export function useAiConversation({
             temperature,
             timeoutMs: ANSWER_TIMEOUT_MS,
             onText,
+            onWait,
           });
           reply = res.reply;
           const saved = res.conversation;
@@ -436,7 +444,7 @@ export function useAiConversation({
           setUnsaved(!saved);
           if ((saved?.id ?? currentId) !== currentId) setConversationId(saved?.id ?? currentId);
         } else {
-          reply = await askAi(outgoing, { context: conversationContext(context), temperature, timeoutMs: ANSWER_TIMEOUT_MS, onText });
+          reply = await askAi(outgoing, { context: conversationContext(context), temperature, timeoutMs: ANSWER_TIMEOUT_MS, onText, onWait });
           if (view !== viewRef.current) return dropped();
         }
         trace("cevap", `${since(asked)} (${reply.length} karakter)${isTemporary ? " [geçici]" : ""}; soru toplam ${since(started)}`);

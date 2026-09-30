@@ -25,9 +25,10 @@ export interface VisionReading {
 
 const FUNCTION = "iris-vision";
 const MISSING_KEY = "chemai:vision-missing-until";
-/** Not deployed: asked again after six hours. Unreachable: after ten minutes. */
+/** Not deployed: asked again after six hours. Unreachable: after ten minutes. Every model busy: after two. */
 const MISSING_PAUSE_MS = 6 * 60 * 60 * 1000;
 const OFFLINE_PAUSE_MS = 10 * 60 * 1000;
+const BUSY_PAUSE_MS = 2 * 60 * 1000;
 const TIMEOUT_MS = 40_000;
 
 function str(value: unknown, max: number): string | undefined {
@@ -153,6 +154,7 @@ export async function readImageWithAi(base64: string, language: "tr" | "en"): Pr
   if (result.error) {
     const status = (result.error as { context?: { status?: number } }).context?.status;
     if (status === 404) pause(MISSING_PAUSE_MS);
+    else if (status === 429) pause(BUSY_PAUSE_MS);
     else if (status === undefined) pause(OFFLINE_PAUSE_MS);
     trace("görsel", `görsel model kullanılamadı (${status ?? "bağlantı"}), cihazdaki okuma kullanılıyor`);
     return null;

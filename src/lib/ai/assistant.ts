@@ -16,6 +16,7 @@
 // masses, equations to balance, pH of a stated acid), so the engine still answers offline.
 
 import { askAi, type AiMessage } from "@/lib/ai/client";
+import { aiBusy } from "@/lib/ai/busy";
 import { CARD_OPEN, CARD_RULES } from "@/lib/ai/answerCards";
 import { latexToUnicode } from "@/lib/ai/latex";
 import { FILE_OPEN, attachedFileOf } from "@/lib/files/ask";
@@ -529,7 +530,7 @@ async function planAction(tool: ToolName, question: string, history: AiMessage[]
   const prompt = `${recentContext(history)}${voice ? VOICE_NOTE : ""}SORU:\n${question.slice(0, 2400)}\n\nJSON:`;
   const started = performance.now();
   try {
-    const reply = await askAi([{ role: "user", content: prompt }], { context, temperature: 0, timeoutMs: PLANNER_TIMEOUT_MS });
+    const reply = await askAi([{ role: "user", content: prompt }], { context, temperature: 0, timeoutMs: PLANNER_TIMEOUT_MS, retries: 0 });
     const call = parsePlan(reply)?.calls.find((entry) => entry.tool === tool) ?? null;
     trace("plan", `${tool} eksikti, ek planlayıcı ${since(started)}: ${call ? "eklendi" : "gerek görmedi"}`);
     return call;
@@ -550,6 +551,11 @@ async function completePlan(plan: Plan, question: string, history: AiMessage[], 
   }
   const missing = wantedActions(question).filter((tool) => !plan.calls.some((call) => call.tool === tool));
   if (missing.length === 0) return plan;
+  if (aiBusy()) {
+    // No extra calls while the AI is busy; a timer is still read from the words.
+    const timer = missing.includes("timer") ? timerFromWords(question) : null;
+    return timer ? { ...plan, calls: [...plan.calls, timer].slice(0, MAX_CALLS) } : plan;
+  }
   const extra = await Promise.all(missing.slice(0, 2).map((tool) => planAction(tool, question, history, voice)));
   return { ...plan, calls: [...plan.calls, ...extra.filter((call): call is ToolCall => call !== null)].slice(0, MAX_CALLS) };
 }
@@ -560,6 +566,11 @@ export async function planTools({ question, history, image, data, voice, sources
   if (!mightCompute(subject)) {
     trace("plan", "hesap gerekmiyor, planlayıcı atlandı");
     return { calls: [], intents: [] };
+  }
+  if (aiBusy()) {
+    // The AI's per-minute limit was just reached: its call goes to the answer, the rules plan.
+    trace("plan", "yapay zekâ yoğun, planlayıcı atlandı; kurallar kullanılıyor");
+    return { calls: [...fallbackPlan(subject, data), ...repeatedActions(question, history)].slice(0, MAX_CALLS), intents: [] };
   }
   onPhase?.("planning");
   const prompt =
@@ -573,7 +584,8 @@ export async function planTools({ question, history, image, data, voice, sources
     `SORU:\n${question.slice(0, 2400)}\n\nJSON:`;
   const started = performance.now();
   try {
-    const reply = await askAi([{ role: "user", content: prompt }], { context: PLANNER, temperature: 0, timeoutMs: PLANNER_TIMEOUT_MS });
+    // Busy: no second try, the rules plan at once (below).
+    const reply = await askAi([{ role: "user", content: prompt }], { context: PLANNER, temperature: 0, timeoutMs: PLANNER_TIMEOUT_MS, retries: 0 });
     const plan = parsePlan(reply);
     // An empty plan from the planner is a decision; an unreadable reply is not.
     if (plan) {

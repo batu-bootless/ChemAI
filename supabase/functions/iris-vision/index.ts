@@ -10,7 +10,15 @@
 // Deploy (README): supabase secrets set GEMINI_API_KEY=… ; supabase functions deploy iris-vision --no-verify-jwt
 // (the function checks the caller's session itself, so it works with any JWT signing setup).
 
-const MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-flash-latest";
+// Tried in turn: each Gemini model has its own limits (on the free tier a few requests a minute
+// each), so when one is busy (429), overloaded (503) or not offered (404), the next reads the photo.
+// GEMINI_MODELS (comma separated, e.g. from AI Studio's rate-limit page) replaces the list.
+const MODELS = (Deno.env.get("GEMINI_MODELS") ?? Deno.env.get("GEMINI_MODEL") ?? "gemini-flash-latest,gemini-flash-lite-latest")
+  .split(",")
+  .map((model) => model.trim())
+  .filter(Boolean);
+/** All the models together; the app gives up on the reading at 40 s. */
+const BUDGET_MS = 38_000;
 const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
@@ -64,29 +72,43 @@ Deno.serve(async (req) => {
   if (!image || image.length > MAX_IMAGE || !/^[A-Za-z0-9+/]+={0,2}$/.test(image)) return json({ error: "Geçersiz görüntü." }, 400);
   const language = body.language === "en" ? "en" : "tr";
 
-  let res: Response;
-  try {
-    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_KEY },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt(language) }, { inline_data: { mime_type: "image/jpeg", data: image } }] }],
-        generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
-      }),
-      signal: AbortSignal.timeout(45_000),
-    });
-  } catch (error) {
-    console.error("gemini fetch", error);
-    return json({ error: "Görsel model zamanında yanıt vermedi." }, 504);
+  const deadline = Date.now() + BUDGET_MS;
+  let res: Response | null = null;
+  let model = "";
+  let busy = false;
+  for (const candidate of MODELS) {
+    const left = deadline - Date.now();
+    if (left < 3000) break;
+    model = candidate;
+    try {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${candidate}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_KEY },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt(language) }, { inline_data: { mime_type: "image/jpeg", data: image } }] }],
+          generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
+        }),
+        signal: AbortSignal.timeout(left),
+      });
+    } catch (error) {
+      console.error("gemini fetch", candidate, error);
+      return json({ error: "Görsel model zamanında yanıt vermedi." }, 504);
+    }
+    if (res.ok) break;
+    console.error("gemini", candidate, res.status, (await res.text()).slice(0, 500));
+    if (res.status !== 429 && res.status !== 503 && res.status !== 404) break;
+    busy ||= res.status !== 404;
+    res = null;
   }
-  if (!res.ok) {
-    console.error("gemini", res.status, (await res.text()).slice(0, 500));
-    return json({ error: res.status === 429 ? "Görsel okuma kotası doldu; biraz sonra tekrar dene." : "Görsel okunamadı." }, res.status === 429 ? 429 : 502);
+  if (!res || !res.ok) {
+    return busy
+      ? json({ error: "Görsel okuma şu an çok yoğun; biraz sonra tekrar dene." }, 429)
+      : json({ error: "Görsel okunamadı." }, 502);
   }
   const data = await res.json();
   const text: string = (data?.candidates?.[0]?.content?.parts ?? []).map((part: { text?: string }) => part.text ?? "").join("");
   try {
-    return json({ reading: JSON.parse(text), model: MODEL });
+    return json({ reading: JSON.parse(text), model });
   } catch {
     console.error("unreadable reading", text.slice(0, 500));
     return json({ error: "Görsel modelin yanıtı okunamadı." }, 502);

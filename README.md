@@ -39,7 +39,17 @@ npx supabase secrets set GEMINI_API_KEY=<Gemini API anahtarı>
 npx supabase functions deploy iris-vision --no-verify-jwt
 ```
 
-`--no-verify-jwt`: işlev çağıranın oturumunu kendisi denetler (yalnızca giriş yapmış kullanıcılar). İsteğe bağlı: `GEMINI_MODEL` (varsayılan `gemini-flash-latest`). Görsel okuma Gemini kotasından yer; fotoğraf Google'a gider (gizlilik politikası ve Play Console'daki veri güvenliği formu buna göre güncellenmeli).
+`--no-verify-jwt`: işlev çağıranın oturumunu kendisi denetler (yalnızca giriş yapmış kullanıcılar). İşlev modelleri sırayla dener: biri yoğunsa (429/503) ya da yoksa (404) sıradakine geçer. İsteğe bağlı: `GEMINI_MODELS`, virgülle ayrılmış model listesi (varsayılan `gemini-flash-latest,gemini-flash-lite-latest`). Görsel okuma Gemini kotasından yer; fotoğraf Google'a gider (gizlilik politikası ve Play Console'daki veri güvenliği formu buna göre güncellenmeli).
+
+### Yoğunluk ve ücretsiz Gemini kotası
+
+Gemini'nin ücretsiz katmanında her modelin dakikalık (RPM) ve günlük (RPD) istek sınırı düşüktür ve bütün kullanıcılar aynı sınırı paylaşır. Sınır dolunca site `429` döndürür. Uygulama bu durumda (`src/lib/ai/busy.ts`):
+
+- Yanıtı hemen hata saymaz; birkaç saniye bekleyip en fazla iki kez yeniden sorar (sitenin ya da Gemini'nin söylediği bekleme süresine uyar). Beklerken yanıt balonunda "İris çok yoğun · N sn sonra yeniden soruyorum…" yazar.
+- Sonraki 5 dakika daha az çağrı harcar: planlayıcı çağrısı atlanır, cihazdaki kurallar planlar (soru başına 2 yerine 1 çağrı); belgeler üç bölüm yerine birer birer okunur.
+- Günlük sınır dolmuşsa yeniden denemez; kullanıcıya sınırın her gün yenilendiğini söyler (hesap motoru çalışmaya devam eder).
+
+Sitenin tarafında (bu repoda değil) yapılması gerekenler: kişi başına dakikalık/günlük soru sınırı ve modeller arasında sırayla deneme.
 
 ## Android kimliği
 

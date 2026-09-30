@@ -12,6 +12,7 @@
 // The block tells Iris to answer from the file, cite the pages and never make up what is not there.
 
 import { askAi } from "@/lib/ai/client";
+import { AiBusyError, aiBusy } from "@/lib/ai/busy";
 import { since, trace } from "@/lib/ai/trace";
 import { countLabel, kindLabel, type FileDoc } from "./read";
 
@@ -178,8 +179,10 @@ const pause = (ms: number) => new Promise((resolve) => window.setTimeout(resolve
 async function askWithRetry(prompt: string, context: string): Promise<string> {
   try {
     return await askAi([{ role: "user", content: prompt }], { context, temperature: 0.2, timeoutMs: 45_000 });
-  } catch {
-    // Too many requests at once, or a slow moment: once more, a little later.
+  } catch (error) {
+    // Busy: the client has waited and asked again already; one more would only add to the load.
+    if (error instanceof AiBusyError) throw error;
+    // A slow moment: once more, a little later.
     await pause(2500);
     return askAi([{ role: "user", content: prompt }], { context, temperature: 0.2, timeoutMs: 45_000 });
   }
@@ -187,7 +190,7 @@ async function askWithRetry(prompt: string, context: string): Promise<string> {
 
 /**
  * The whole file boiled down to about 3600 characters with page tags, read part by part (three
- * reading calls at a time). `onProgress(done, total)` follows the reading.
+ * reading calls at a time, one while the AI is busy). `onProgress(done, total)` follows the reading.
  */
 export async function digestOf(doc: FileDoc, language: "tr" | "en", onProgress?: (done: number, total: number) => void): Promise<string> {
   const tr = language === "tr";
@@ -201,8 +204,10 @@ export async function digestOf(doc: FileDoc, language: "tr" | "en", onProgress?:
   onProgress?.(0, parts.length);
   const notes: string[] = new Array(parts.length).fill("");
   let next = 0;
-  const worker = async () => {
+  // Three parts at a time; while the AI is busy only the first lane goes on, one part at a time.
+  const worker = async (lane: number) => {
     while (next < parts.length) {
+      if (lane > 0 && aiBusy()) return;
       const index = next++;
       const part = parts[index];
       try {
@@ -214,7 +219,7 @@ export async function digestOf(doc: FileDoc, language: "tr" | "en", onProgress?:
       onProgress?.(done, parts.length);
     }
   };
-  await Promise.all([worker(), worker(), worker()]);
+  await Promise.all([worker(0), worker(1), worker(2)]);
   const read = notes.map((note, index) => (note ? `${tr ? "Bölüm" : "Part"} ${index + 1} (${parts[index].places}):\n${note}` : "")).filter(Boolean);
   if (!read.length) throw new Error(tr ? "Belge okunamadı; bağlantını kontrol edip tekrar dene." : "The document couldn't be read; check your connection and try again.");
   let digest = read.join("\n\n");

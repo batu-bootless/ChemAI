@@ -158,9 +158,11 @@ export default function AssistantMessage({ turn, speakingId, onSpeak }: { turn: 
           </div>
         ) : turn.pending ? (
           <p className="iris-shimmer pt-1 text-[14.5px] font-semibold">
-            {speaking
-              ? l("Sonucu söylüyorum; açıklama yazılıyor…", "Saying the result; the explanation is being written…")
-              : l("Açıklama yazılıyor…", "Writing the explanation…")}
+            {turn.waiting
+              ? l(`İris çok yoğun · ${turn.waiting} sn sonra yeniden soruyorum…`, `Iris is busy · asking again in ${turn.waiting} s…`)
+              : speaking
+                ? l("Sonucu söylüyorum; açıklama yazılıyor…", "Saying the result; the explanation is being written…")
+                : l("Açıklama yazılıyor…", "Writing the explanation…")}
           </p>
         ) : turn.local ? (
           <p className="rounded-2xl bg-[#F1F0F6] px-3.5 py-2.5 text-[12.5px] font-medium leading-snug text-[#5B5B69]">
