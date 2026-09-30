@@ -99,6 +99,10 @@ npx supabase functions deploy iris-chat --no-verify-jwt
 - `versionCode 1`, `versionName 1.0.0` - yalnızca yeni bir Play yüklemesinde artırılır.
 - İmzalama: ChemAI'ın **kendi yükleme anahtarı** (ChemPlus'ınki değil), 27 Eylül 2026'da oluşturuldu: `keystore/chemai-upload.jks` + `keystore.properties` (ikisi de git dışı, **mutlaka yedekleyin**). SHA-1: `B2:6F:FF:FE:F2:2C:EB:84:69:0E:B5:E1:23:4B:D7:01:A7:E7:43:68`.
 - Google ile giriş için Google Cloud'da paket `com.chemai.app` ve yeni anahtarın SHA-1'iyle (`.\scripts\print-fingerprints.ps1`) bir Android OAuth istemcisi gerekir; Play App Signing anahtarının SHA-1'i için ikinci bir istemci. Supabase'de değişiklik gerekmez.
+- "Google ile devam et" düğmesi varsayılan olarak açıktır (`src/mobile/auth/googleFeatureFlag.ts`). Kayıtlı olmayan bir derlemede `NEXT_PUBLIC_FEATURE_GOOGLE_SIGNIN=false` ile gizlenir.
+- **Test APK'ları** (`com.chemai.app.test`, "ChemAI Test"): Google ile giriş için bu paket adıyla ve APK'yı imzalayan anahtarın SHA-1'iyle ayrı bir Android OAuth istemcisi gerekir.
+  - Bilgisayarda derlenen test APK'sı yükleme anahtarıyla imzalanır.
+  - Claude'un bulut oturumunda derlenen test APK'sı o oturumun hata ayıklama (debug) anahtarıyla imzalanır. Her yeni oturumun anahtarı, dolayısıyla SHA-1'i farklıdır. 30 Eylül 2026 oturumu: `05:A6:56:D3:5C:82:03:A1:E1:3B:6C:9B:98:B1:B2:39:FA:AB:A2:AF`.
 
 ## Derleme
 
