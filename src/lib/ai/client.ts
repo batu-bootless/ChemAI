@@ -7,6 +7,9 @@ import { textFor } from "@/mobile/i18n";
 // talks to /api/ai/* the same way.
 
 import type { AiConversationSummary } from "@/lib/ai/history";
+import { AiBusyError, busyFrom, markBusy, retryDelay } from "@/lib/ai/busy";
+import { askBackup } from "@/lib/ai/backup";
+import { trace } from "@/lib/ai/trace";
 
 export interface AiMessage {
   role: "user" | "assistant";
@@ -22,6 +25,63 @@ interface ChatResponse {
 /** An AI call that took longer than it may (the answer must not keep the screen waiting for ever). */
 export class AiTimeoutError extends Error {}
 
+export { AiBusyError } from "@/lib/ai/busy";
+
+/** The website answered with an error status. */
+export class AiHttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+    this.name = "AiHttpError";
+  }
+}
+
+/** A failed answer from the website: busy (AiBusyError) or another error. */
+function failure(res: Response, message: string | undefined): Error {
+  const busy = busyFrom(res.status, message ?? "", res.headers.get("retry-after"));
+  if (!busy) return new AiHttpError(message || textFor("İris yanıt veremedi.", "Iris couldn't answer."), res.status);
+  return new AiBusyError(
+    busy.daily
+      ? textFor(
+          "İris'in bugünkü yapay zekâ sınırı doldu; sınır her gün yenilenir. Hesap motoru bu arada çalışmaya devam ediyor.",
+          "Iris's AI limit for today is used up; it renews every day. The calculation engine keeps working meanwhile."
+        )
+      : textFor("İris şu an çok yoğun. Bir dakika sonra tekrar dener misin?", "Iris is very busy right now. Try again in a minute?"),
+    busy.daily,
+    busy.retryAfterMs
+  );
+}
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * `call` again after a busy answer, a few seconds later (at most `retries` times, within the
+ * question's time): the free limits are counted per minute, so a moment later there is often room.
+ * `onWait(seconds)` tells the screen while it waits, and `onWait(0)` when it asks again.
+ */
+async function patiently<T>(call: (timeoutMs: number) => Promise<T>, timeoutMs: number, retries: number, onWait?: (seconds: number) => void): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await call(Math.max(1000, deadline - Date.now()));
+    } catch (error) {
+      if (!(error instanceof AiBusyError) || attempt >= retries) throw error;
+      const wait = retryDelay(error, attempt);
+      // Room is left for the answer itself to be written after the wait.
+      if (wait === null || Date.now() + wait + 10_000 > deadline) throw error;
+      trace("api", `yapay zekâ yoğun, ${Math.round(wait / 1000)} sn sonra yeniden soruluyor`);
+      onWait?.(Math.ceil(wait / 1000));
+      await pause(wait);
+      onWait?.(0);
+    }
+  }
+}
+
+/** Busy answers are asked again twice, unless the caller says otherwise. */
+const RETRIES = 2;
+
 async function postChat(body: Record<string, unknown>, timeoutMs = 90_000): Promise<ChatResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -33,7 +93,7 @@ async function postChat(body: Record<string, unknown>, timeoutMs = 90_000): Prom
       signal: controller.signal,
     });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((json as { error?: string })?.error || textFor("İris yanıt veremedi.", "Iris couldn't answer."));
+    if (!res.ok) throw failure(res, (json as { error?: string })?.error);
     const reply = (json as { reply?: unknown }).reply;
     if (typeof reply !== "string" || !reply.trim()) throw new Error(textFor("İris boş bir yanıt verdi. Tekrar dener misin?", "Iris gave an empty answer. Try again?"));
     return json as ChatResponse;
@@ -88,7 +148,7 @@ async function postChatStream(body: Record<string, unknown>, timeoutMs: number, 
         return postChat(body, timeoutMs);
       }
       const json = await res.json().catch(() => ({}));
-      throw new Error((json as { error?: string })?.error || textFor("İris yanıt veremedi.", "Iris couldn't answer."));
+      throw failure(res, (json as { error?: string })?.error);
     }
     let text = "";
     let final: ChatResponse | null = null;
@@ -142,31 +202,74 @@ export function warmChat(): void {
   void fetch("/api/ai/chat/stream", { method: "GET", cache: "no-store" }).catch(() => undefined);
 }
 
+interface AskOptions {
+  context?: string;
+  /** The guide for the backup AI when `context` is left out (a saved chat's later turns: the website
+   * keeps the guide with the conversation, the backup does not). */
+  fallbackContext?: string;
+  temperature?: number;
+  timeoutMs?: number;
+  onText?: (text: string) => void;
+  /** Busy answers asked again (default 2); 0 for a call that has its own way out (the planner's rules). */
+  retries?: number;
+  /** Waiting to ask again after a busy answer: seconds, then 0 when it asks. */
+  onWait?: (seconds: number) => void;
+}
+
+/** Failures the backup AI can stand in for: busy or used up, the website down, no connection to it. */
+function worthBackup(error: unknown): boolean {
+  if (error instanceof AiBusyError) return true;
+  if (error instanceof AiHttpError) return error.status >= 500 || error.status === 402 || error.status === 404 || error.status === 408;
+  return error instanceof TypeError;
+}
+
+/**
+ * The website first; when it cannot answer, the backup AI (backup.ts) at once, with the time that
+ * is left. Only when the backup is busy too (or not there) does the app save calls for a while and
+ * wait to ask again (`patiently`).
+ */
+function send(body: Record<string, unknown>, opts: AskOptions): Promise<ChatResponse> {
+  const timeoutMs = opts.timeoutMs ?? 90_000;
+  const onText = opts.onText;
+  return patiently(
+    async (left) => {
+      const started = Date.now();
+      try {
+        return await (onText ? postChatStream(body, left, onText) : postChat(body, left));
+      } catch (error) {
+        if (!worthBackup(error)) throw error;
+        const backup = await askBackup({ ...body, context: body.context ?? opts.fallbackContext }, left - (Date.now() - started));
+        if (backup.kind === "answer") {
+          return "conversation" in backup ? { reply: backup.reply, conversation: backup.conversation } : { reply: backup.reply };
+        }
+        if (backup.kind === "busy" || error instanceof AiBusyError) {
+          markBusy();
+          throw error instanceof AiBusyError
+            ? error
+            : new AiBusyError(textFor("İris şu an çok yoğun. Bir dakika sonra tekrar dener misin?", "Iris is very busy right now. Try again in a minute?"), false, null);
+        }
+        throw error;
+      }
+    },
+    timeoutMs,
+    opts.retries ?? RETRIES,
+    opts.onWait
+  );
+}
+
 /**
  * One-shot question; nothing is saved to the chat history. `temperature` (0–1) is honoured by the
  * API: the app's tool planner asks at 0 so the same question always plans the same tools.
  * `onText`: the answer so far, as it is written.
  */
-export async function askAi(
-  messages: AiMessage[],
-  opts: { context?: string; temperature?: number; timeoutMs?: number; onText?: (text: string) => void } = {}
-): Promise<string> {
-  const body = { messages, context: opts.context, temperature: opts.temperature };
-  if (opts.onText) return (await postChatStream(body, opts.timeoutMs ?? 90_000, opts.onText)).reply;
-  return (await postChat(body, opts.timeoutMs)).reply;
+export async function askAi(messages: AiMessage[], opts: AskOptions = {}): Promise<string> {
+  return (await send({ messages, context: opts.context, temperature: opts.temperature }, opts)).reply;
 }
 
 /** Chat turn saved to the user's history; a null conversationId starts a new conversation. */
 export async function askAiInConversation(
   messages: AiMessage[],
-  opts: {
-    context?: string;
-    conversationId: string | null;
-    surface: string;
-    temperature?: number;
-    timeoutMs?: number;
-    onText?: (text: string) => void;
-  }
+  opts: AskOptions & { conversationId: string | null; surface: string }
 ): Promise<ChatResponse> {
   const body = {
     messages,
@@ -174,8 +277,7 @@ export async function askAiInConversation(
     temperature: opts.temperature,
     conversation: { id: opts.conversationId, surface: opts.surface },
   };
-  if (opts.onText) return postChatStream(body, opts.timeoutMs ?? 90_000, opts.onText);
-  return postChat(body, opts.timeoutMs);
+  return send(body, opts);
 }
 
 export interface AiGraphResult {

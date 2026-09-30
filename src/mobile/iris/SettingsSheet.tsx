@@ -765,6 +765,23 @@ function ActionsPage() {
       </Card>
       <Note>{l("Kapalıyken İris yalnızca hesaplar ve anlatır; hiçbir şey oluşturmaz.", "When off, Iris only computes and explains; it makes nothing.")}</Note>
 
+      <SectionTitle>{l("Fotoğraflar", "Photos")}</SectionTitle>
+      <Card>
+        <ToggleRow
+          label={l("Görsel yapay zekâ ile oku", "Read with the vision AI")}
+          detail={l("Yapı çizimlerini, tepkime şemalarını ve soruları okur", "Reads drawn structures, reaction schemes and questions")}
+          on={prefs.visionAi}
+          onChange={(visionAi) => saveIrisPrefs({ visionAi })}
+          last
+        />
+      </Card>
+      <Note>
+        {l(
+          "Açıkken fotoğraf okunmak için Google Gemini'ye gönderilir; kapalıyken yalnızca telefonda okunur ve yapı çizimleri okunamaz.",
+          "When on, the photo is sent to Google Gemini to be read; when off, it is read on the phone only and drawn structures can't be read."
+        )}
+      </Note>
+
       <SectionTitle>{l("Güven", "Trust")}</SectionTitle>
       <Card>
         <ToggleRow
@@ -1008,7 +1025,7 @@ function AboutPage({ onClose }: { onClose: () => void }) {
     <div className="pt-2">
       <Card>
         <Row label={<Wordmark height={20} />} detail={l("Sürüm 1.0.0", "Version 1.0.0")} />
-        <Row label={l("Yapay zekâ", "AI")} detail={l("İris · Google Gemini ile, chemplus.com.tr üzerinden", "Iris · Google Gemini, through chemplus.com.tr")} />
+        <Row label={l("Yapay zekâ", "AI")} detail={l("İris · Google Gemini ile, chemplus.com.tr üzerinden; yoğunlukta Groq ve NVIDIA'daki modeller", "Iris · Google Gemini, through chemplus.com.tr; Groq's and NVIDIA's models when it is busy")} />
         <Row label={l("Hesap motoru", "Calculation engine")} detail={l("Cihazda: RDKit, ChemAI çözücüleri ve güvenlik kartları", "On the device: RDKit, ChemAI solvers and safety cards")} />
         <Row label={l("Ses", "Voice")} detail="Microsoft Azure · Google" last />
       </Card>

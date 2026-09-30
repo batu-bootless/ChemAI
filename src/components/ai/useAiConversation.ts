@@ -19,6 +19,7 @@ import {
   type Phase,
   type Plan,
 } from "@/lib/ai/assistant";
+import { answerText } from "@/lib/ai/answerCards";
 import { conversationContext } from "@/lib/ai/guide";
 import { digestOf, fileBlock, fileRef, fitsWhole, relevantPassages, wantsWholeDocument, type FileRef } from "@/lib/files/ask";
 import type { FileDoc } from "@/lib/files/read";
@@ -57,12 +58,15 @@ export interface ChatTurn {
   quick?: boolean;
   /** Assistant: the engine's cards are in, the AI's words are still being written. */
   pending?: boolean;
+  /** Assistant, pending: the AI was busy; asked again in this many seconds. */
+  waiting?: number;
   /** Assistant: the answer's numbers checked against the engine (Kanıt denetimi). */
   verification?: Verification | null;
   /** Assistant: hazards and incompatible pairs in a lab question (Güvenlik taraması). */
   safety?: SafetyScan | null;
-  /** User: the photo that came with the question (thumbnail only on this device). */
-  image?: { thumb?: string; note: ImageNote };
+  /** User: the photo that came with the question (on this device only): its thumbnail, and while
+   * the chat is open the sharper copy the full-screen viewer shows. */
+  image?: { thumb?: string; full?: string; note: ImageNote };
   /** User: a data file (CSV) that came with the question. */
   data?: DataFile;
   /** User: a document (PDF, Word…) that came with the question: its name and what it is. */
@@ -72,7 +76,7 @@ export interface ChatTurn {
 
 export interface SendOptions {
   fresh?: boolean;
-  image?: { thumb?: string; note: ImageNote };
+  image?: { thumb?: string; full?: string; note: ImageNote };
   data?: DataFile;
   /** A document read on the phone (lib/files/read.ts): it joins the chat, and every later question sees it too. */
   file?: FileDoc;
@@ -113,7 +117,8 @@ function toWire(turn: ChatTurn): AiMessage {
 function turnFromStored(message: AiMessage): ChatTurn {
   if (message.role === "assistant") {
     const content = cleanReply(message.content);
-    return { id: newId(), role: "assistant", content, wire: content };
+    // History goes back to the AI as sentences, not as the cards' JSON.
+    return { id: newId(), role: "assistant", content, wire: answerText(content) };
   }
   const parsed = parseUserMessage(message.content);
   return {
@@ -393,6 +398,11 @@ export function useAiConversation({
         const asked = performance.now();
         // Spoken replies get a little more room to sound like a person, not a report.
         const temperature = opts.voice ? 0.55 : 0.35;
+        // The AI busy (the free limits are per minute): the answer's bubble says it waits, then asks again.
+        const onWait = (seconds: number) => {
+          if (view !== viewRef.current) return;
+          setMessages((prev) => prev.map((turn) => (turn.id === answerId && turn.pending ? { ...turn, waiting: seconds || undefined } : turn)));
+        };
         // The answer shows (and voice mode speaks it) as it is written; the screen catches up at
         // most every few frames.
         let shown = "";
@@ -416,11 +426,13 @@ export function useAiConversation({
         if (!isTemporary) {
           const res = await askAiInConversation(outgoing, {
             context: currentId ? undefined : conversationContext(context),
+            fallbackContext: conversationContext(context),
             conversationId: currentId,
             surface: notebook ? notebookSurface(notebook) : surface,
             temperature,
             timeoutMs: ANSWER_TIMEOUT_MS,
             onText,
+            onWait,
           });
           reply = res.reply;
           const saved = res.conversation;
@@ -433,17 +445,19 @@ export function useAiConversation({
           setUnsaved(!saved);
           if ((saved?.id ?? currentId) !== currentId) setConversationId(saved?.id ?? currentId);
         } else {
-          reply = await askAi(outgoing, { context: conversationContext(context), temperature, timeoutMs: ANSWER_TIMEOUT_MS, onText });
+          reply = await askAi(outgoing, { context: conversationContext(context), temperature, timeoutMs: ANSWER_TIMEOUT_MS, onText, onWait });
           if (view !== viewRef.current) return dropped();
         }
         trace("cevap", `${since(asked)} (${reply.length} karakter)${isTemporary ? " [geçici]" : ""}; soru toplam ${since(started)}`);
         if (savedId) void attachMedia(mediaIds, savedId);
         // Never the app's own blocks, nor a "done" the app did not do (assistant.ts).
         const clean = cleanReply(reply, outcomes);
-        const checked = checks(question, clean, outcomes, intents);
+        // The answer as sentences (answerCards.ts): what is checked, spoken and sent back as history.
+        const plain = answerText(clean);
+        const checked = checks(question, plain, outcomes, intents);
         if (checked.verification) countUsage({ verified: checked.verification.verified.length });
-        setMessages((prev) => prev.map((turn) => (turn.id === answerId ? { ...turn, content: clean, wire: clean, pending: false, ...checked } : turn)));
-        safely("onReply", () => opts.onReply?.(clean, answerId));
+        setMessages((prev) => prev.map((turn) => (turn.id === answerId ? { ...turn, content: clean, wire: plain, pending: false, ...checked } : turn)));
+        safely("onReply", () => opts.onReply?.(plain, answerId));
       } catch (e) {
         trace("cevap", `hata ${since(started)}: ${e instanceof Error ? e.message : String(e)}`);
         if (view !== viewRef.current) return dropped();
@@ -519,7 +533,7 @@ export function useAiConversation({
           next.restoring = true;
           pending.push({ answerId: next.id, wire: turn.wire, question: turn.content, reply: next.content });
         } else if (readIrisPrefs().safety) {
-          next.safety = scanSafety([turn.content, next.content], [], parsed.intents);
+          next.safety = scanSafety([turn.content, answerText(next.content)], [], parsed.intents);
         }
       });
       setConversationId(id);
@@ -533,7 +547,7 @@ export function useAiConversation({
         const parsed = parseUserMessage(item.wire);
         const outcomes = await runCalls(parsed.calls, language, undefined, { restoring: true });
         if (view !== viewRef.current) return;
-        const checked = checks(item.question, item.reply, outcomes, parsed.intents);
+        const checked = checks(item.question, answerText(item.reply), outcomes, parsed.intents);
         setMessages((prev) => prev.map((turn) => (turn.id === item.answerId ? { ...turn, tools: outcomes, restoring: false, ...checked } : turn)));
       }
     } catch (e) {

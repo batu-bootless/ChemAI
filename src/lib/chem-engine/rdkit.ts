@@ -99,6 +99,22 @@ export interface MoleculeInfo {
 
 export class MoleculeError extends Error {}
 
+/** RDKit's flat drawing of one SMILES, without the full analysis: for the species of a reaction scheme. */
+export async function depictSmiles(smiles: string, width = 150, height = 110): Promise<string> {
+  const text = smiles.trim();
+  const RDKit = await loadRDKit();
+  const mol = text ? RDKit.get_mol(text) : null;
+  if (!mol) throw new MoleculeError(`RDKit bu SMILES'ı geçerli bir yapı olarak kabul etmedi: ${text}`);
+  try {
+    return mol
+      .get_svg_with_highlights(JSON.stringify({ width, height, bondLineWidth: 1.6, clearBackground: false, padding: 0.08 }))
+      .replace(/<\?xml[^>]*>\s*/, "")
+      .replace(/<rect[^>]*style='opacity:1\.0;fill:#FFFFFF[^>]*\/>/, "");
+  } finally {
+    mol.delete();
+  }
+}
+
 /** RDKit's own analysis of one SMILES. Throws MoleculeError when RDKit rejects the structure. */
 export async function analyseSmiles(smiles: string): Promise<MoleculeInfo> {
   const text = smiles.trim();

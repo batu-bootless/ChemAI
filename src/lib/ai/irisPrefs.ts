@@ -30,6 +30,8 @@ export interface IrisPrefs {
   saveHistory: boolean;
   /** Read every answer aloud. */
   autoSpeak: boolean;
+  /** Send photos to the vision model (visionAi.ts) so drawn structures and schemes can be read. */
+  visionAi: boolean;
 }
 
 export const LEVELS: { value: Exclude<Level, "">; tr: string; en: string }[] = [
@@ -52,7 +54,7 @@ const PREFS_KEY = "chemai:iris-prefs:v1";
 const AUTO_SPEAK_KEY = "chemplus:ai-read-aloud";
 
 export const DEFAULT_PERSONAL: PersonalContext = { enabled: true, level: "", field: "", style: "", lab: "", about: "" };
-export const DEFAULT_PREFS: IrisPrefs = { verify: true, safety: true, actions: true, saveHistory: true, autoSpeak: false };
+export const DEFAULT_PREFS: IrisPrefs = { verify: true, safety: true, actions: true, saveHistory: true, autoSpeak: false, visionAi: true };
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;

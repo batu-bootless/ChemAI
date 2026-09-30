@@ -20,6 +20,7 @@ import {
   AudioLines,
   Calculator,
   Camera,
+  Expand,
   FileSpreadsheet,
   FileText,
   Files,
@@ -34,13 +35,15 @@ import {
   Timer,
   X,
 } from "lucide-react";
+import ImageViewer from "@/components/ai/ImageViewer";
 import { useAiConversation } from "@/components/ai/useAiConversation";
 import { prepareImage, readImageText, imageNote, type PreparedImage } from "@/lib/ai/vision";
+import { readImageWithAi, type VisionReading } from "@/lib/ai/visionAi";
 import { readDataFile, type ReadDataFile } from "@/lib/ai/datafile";
 import type { Phase } from "@/lib/ai/assistant";
 import { FILE_ACCEPT, countLabel, isDataTable, isImageFile, kindLabel, readFileDoc, type FileDoc } from "@/lib/files/read";
 import { saveDoc } from "@/lib/files/store";
-import { useIrisPrefs } from "@/lib/ai/irisPrefs";
+import { readIrisPrefs, useIrisPrefs } from "@/lib/ai/irisPrefs";
 import { unlockAudio } from "@/lib/ai/naturalVoice";
 import { listen, speak, stopSpeaking, type Listening } from "@/lib/ai/voice";
 import { warmAi } from "@/lib/ai/warm";
@@ -60,7 +63,18 @@ import VoiceMode, { type Ask } from "./VoiceMode";
 import WaveGlow from "./WaveGlow";
 
 type Attachment =
-  | { kind: "image"; image: PreparedImage | null; thumb: string; status: "preparing" | "reading" | "ready" | "failed"; text: string; error?: string }
+  | {
+      kind: "image";
+      image: PreparedImage | null;
+      thumb: string;
+      status: "preparing" | "reading" | "ready" | "failed";
+      text: string;
+      error?: string;
+      /** The vision model's reading (visionAi.ts), when it was asked and answered. */
+      reading?: VisionReading | null;
+      /** The photo is being sent to the vision model (the setting is on). */
+      vision?: boolean;
+    }
   | { kind: "data"; file: ReadDataFile }
   | { kind: "file"; name: string; status: "reading" | "ready"; progress?: { done: number; total: number; what: "pages" | "scan" }; doc?: FileDoc };
 
@@ -216,7 +230,12 @@ export default function AiScreen({ notebookId = null }: { notebookId?: string | 
     if (!ready) return;
     const image =
       attachment?.kind === "image" && attachment.image
-        ? { thumb: attachment.thumb, note: imageNote(attachment.text, attachment.image.color) }
+        ? {
+            thumb: attachment.thumb,
+            // The 1600 px copy, for the full-screen viewer (kept in memory for this chat only).
+            full: `data:image/jpeg;base64,${attachment.image.base64}`,
+            note: imageNote(attachment.text, attachment.image.color, attachment.reading),
+          }
         : undefined;
     const data = attachment?.kind === "data" ? { name: attachment.file.name, csv: attachment.file.csv } : undefined;
     const file = attachment?.kind === "file" ? attachment.doc : undefined;
@@ -237,18 +256,24 @@ export default function AiScreen({ notebookId = null }: { notebookId?: string | 
     try {
       const prepared = await prepareImage(file, language);
       URL.revokeObjectURL(temporary);
-      setAttachment({ kind: "image", image: prepared, thumb: prepared.thumb, status: "reading", text: "" });
-      try {
-        const text = await readImageText(prepared);
-        setAttachment((current) =>
-          current?.kind === "image" && current.thumb === prepared.thumb ? { ...current, status: "ready", text } : current
-        );
-      } catch (error) {
-        const message = error instanceof Error ? error.message : undefined;
-        setAttachment((current) =>
-          current?.kind === "image" && current.thumb === prepared.thumb ? { ...current, status: "failed", error: message } : current
-        );
-      }
+      // The phone's own text reading and, when allowed, the vision model's, side by side: the
+      // vision model can read drawn structures and schemes; the phone's reading is the fallback.
+      const vision = readIrisPrefs().visionAi;
+      setAttachment({ kind: "image", image: prepared, thumb: prepared.thumb, status: "reading", text: "", vision });
+      const [ocr, reading] = await Promise.all([
+        readImageText(prepared).then(
+          (text) => ({ text, error: undefined as string | undefined }),
+          (error: unknown) => ({ text: "", error: error instanceof Error ? error.message : undefined })
+        ),
+        vision ? readImageWithAi(prepared.base64, language) : Promise.resolve(null),
+      ]);
+      setAttachment((current) =>
+        current?.kind === "image" && current.thumb === prepared.thumb
+          ? reading || !ocr.error
+            ? { ...current, status: "ready", text: ocr.text, reading }
+            : { ...current, status: "failed", error: ocr.error }
+          : current
+      );
     } catch {
       setAttachment(null);
     }
@@ -677,6 +702,7 @@ function UserBubble({ turn }: { turn: ReturnType<typeof useAiConversation>["mess
   const l = useL();
   const reduce = useReducedMotion();
   const [showText, setShowText] = useState(false);
+  const [viewing, setViewing] = useState(false);
   return (
     <motion.div
       className="flex flex-col items-end gap-1.5"
@@ -685,9 +711,20 @@ function UserBubble({ turn }: { turn: ReturnType<typeof useAiConversation>["mess
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
     >
       {turn.image?.thumb && (
-        // eslint-disable-next-line @next/next/no-img-element -- a local data URL
-        <img src={turn.image.thumb} alt="" className="max-h-48 max-w-[70%] rounded-3xl object-cover shadow-[0_6px_18px_-8px_rgb(30_20_60/0.35)]" />
+        <button
+          type="button"
+          onClick={() => setViewing(true)}
+          aria-label={l("Fotoğrafı tam ekran aç", "Open the photo full screen")}
+          className="group relative max-w-[70%] overflow-hidden rounded-3xl shadow-[0_6px_18px_-8px_rgb(30_20_60/0.35)] transition active:scale-[0.98]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- a local data URL */}
+          <img src={turn.image.thumb} alt="" className="block max-h-48 object-cover" />
+          <span className="absolute bottom-2 right-2 grid size-7 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm">
+            <Expand className="size-3.5" strokeWidth={2.6} />
+          </span>
+        </button>
       )}
+      {viewing && turn.image?.thumb && <ImageViewer src={turn.image.full ?? turn.image.thumb} onClose={() => setViewing(false)} />}
       {turn.image && !turn.image.thumb && (
         <span className="flex items-center gap-1.5 rounded-full bg-[#EDECF3] px-3 py-1 text-[12px] font-medium text-[#5B5B69]">
           <ImagePlus className="size-3.5" strokeWidth={2.2} /> {l("Fotoğraf", "Photo")}
@@ -940,19 +977,37 @@ function DataPreview({ file, onRemove }: { file: ReadDataFile; onRemove: () => v
   );
 }
 
+/** "2 soru, 3 yapı, 1 tepkime okundu": what the vision model found on the photo. */
+function visionSummary(reading: VisionReading, l: <T>(tr: T, en: T) => T): string {
+  const parts = [
+    reading.sorular.length ? l(`${reading.sorular.length} soru`, `${reading.sorular.length} questions`) : "",
+    reading.molekuller.length ? l(`${reading.molekuller.length} yapı`, `${reading.molekuller.length} structures`) : "",
+    reading.tepkimeler.length ? l(`${reading.tepkimeler.length} tepkime`, `${reading.tepkimeler.length} reactions`) : "",
+    reading.formuller.length ? l(`${reading.formuller.length} formül`, `${reading.formuller.length} formulas`) : "",
+  ].filter(Boolean);
+  return parts.length
+    ? l(`Görsel yapay zekâ okudu: ${parts.join(", ")}`, `Read by the vision AI: ${parts.join(", ")}`)
+    : l("Görsel yapay zekâ okudu", "Read by the vision AI");
+}
+
 function AttachmentPreview({ attachment, onRemove }: { attachment: Extract<Attachment, { kind: "image" }>; onRemove: () => void }) {
   const l = useL();
   const reduce = useReducedMotion();
+  const [viewing, setViewing] = useState(false);
   const status =
     attachment.status === "preparing"
       ? l("Fotoğraf hazırlanıyor…", "Preparing the photo…")
       : attachment.status === "reading"
-        ? l("Metin okunuyor (cihazda)…", "Reading the text (on the device)…")
+        ? attachment.vision
+          ? l("Görsel yapay zekâ inceliyor…", "The vision AI is reading it…")
+          : l("Metin okunuyor (cihazda)…", "Reading the text (on the device)…")
         : attachment.status === "failed"
           ? attachment.error || l("Metin okunamadı; renk ve sorunla devam edebilirsin.", "No text read; you can still send it with your question.")
-          : attachment.text
-            ? l(`${attachment.text.split("\n").length} satır okundu`, `${attachment.text.split("\n").length} lines read`)
-            : l("Fotoğrafta metin yok", "No text on the photo");
+          : attachment.reading
+            ? visionSummary(attachment.reading, l)
+            : attachment.text
+              ? l(`${attachment.text.split("\n").length} satır okundu (cihazda)`, `${attachment.text.split("\n").length} lines read (on the device)`)
+              : l("Fotoğrafta metin yok", "No text on the photo");
   return (
     <motion.div
       className="app-glass-light mb-2 flex items-center gap-2.5 rounded-[20px] p-2"
@@ -960,8 +1015,21 @@ function AttachmentPreview({ attachment, onRemove }: { attachment: Extract<Attac
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 8 }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- a local preview */}
-      <img src={attachment.thumb} alt="" className="relative z-[2] size-11 shrink-0 rounded-xl object-cover" />
+      <button
+        type="button"
+        onClick={() => setViewing(true)}
+        aria-label={l("Fotoğrafı tam ekran aç", "Open the photo full screen")}
+        className="relative z-[2] size-11 shrink-0 overflow-hidden rounded-xl transition active:scale-95"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- a local preview */}
+        <img src={attachment.thumb} alt="" className="size-full object-cover" />
+      </button>
+      {viewing && (
+        <ImageViewer
+          src={attachment.image ? `data:image/jpeg;base64,${attachment.image.base64}` : attachment.thumb}
+          onClose={() => setViewing(false)}
+        />
+      )}
       <div className="relative z-[2] min-w-0 flex-1">
         <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#1C1C22]">
           {(attachment.status === "preparing" || attachment.status === "reading") && <Loader2 className="size-3.5 animate-spin" />}
@@ -973,7 +1041,9 @@ function AttachmentPreview({ attachment, onRemove }: { attachment: Extract<Attac
             {attachment.image.color.name}
           </p>
         )}
-        {attachment.text && <p className="mt-0.5 line-clamp-1 text-[11.5px] text-[#8E8E98]">{attachment.text.replace(/\n/g, " · ")}</p>}
+        {(attachment.reading?.ozet || attachment.text) && (
+          <p className="mt-0.5 line-clamp-1 text-[11.5px] text-[#8E8E98]">{attachment.reading?.ozet ?? attachment.text.replace(/\n/g, " · ")}</p>
+        )}
       </div>
       <button type="button" onClick={onRemove} aria-label={l("Kaldır", "Remove")} className="relative z-[2] grid size-8 shrink-0 place-items-center rounded-full bg-[#1C1C22]/[0.06] text-[#4A4A55]">
         <X className="size-4" strokeWidth={2.4} />
