@@ -8,6 +8,7 @@ import { textFor } from "@/mobile/i18n";
 
 import type { AiConversationSummary } from "@/lib/ai/history";
 import { AiBusyError, busyFrom, markBusy, retryDelay } from "@/lib/ai/busy";
+import { askBackup } from "@/lib/ai/backup";
 import { trace } from "@/lib/ai/trace";
 
 export interface AiMessage {
@@ -26,11 +27,21 @@ export class AiTimeoutError extends Error {}
 
 export { AiBusyError } from "@/lib/ai/busy";
 
-/** A failed answer from the website: busy (AiBusyError, the app saves calls for a while) or another error. */
+/** The website answered with an error status. */
+export class AiHttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+    this.name = "AiHttpError";
+  }
+}
+
+/** A failed answer from the website: busy (AiBusyError) or another error. */
 function failure(res: Response, message: string | undefined): Error {
   const busy = busyFrom(res.status, message ?? "", res.headers.get("retry-after"));
-  if (!busy) return new Error(message || textFor("İris yanıt veremedi.", "Iris couldn't answer."));
-  markBusy();
+  if (!busy) return new AiHttpError(message || textFor("İris yanıt veremedi.", "Iris couldn't answer."), res.status);
   return new AiBusyError(
     busy.daily
       ? textFor(
@@ -193,6 +204,9 @@ export function warmChat(): void {
 
 interface AskOptions {
   context?: string;
+  /** The guide for the backup AI when `context` is left out (a saved chat's later turns: the website
+   * keeps the guide with the conversation, the backup does not). */
+  fallbackContext?: string;
   temperature?: number;
   timeoutMs?: number;
   onText?: (text: string) => void;
@@ -202,11 +216,41 @@ interface AskOptions {
   onWait?: (seconds: number) => void;
 }
 
+/** Failures the backup AI can stand in for: busy or used up, the website down, no connection to it. */
+function worthBackup(error: unknown): boolean {
+  if (error instanceof AiBusyError) return true;
+  if (error instanceof AiHttpError) return error.status >= 500 || error.status === 402 || error.status === 404 || error.status === 408;
+  return error instanceof TypeError;
+}
+
+/**
+ * The website first; when it cannot answer, the backup AI (backup.ts) at once, with the time that
+ * is left. Only when the backup is busy too (or not there) does the app save calls for a while and
+ * wait to ask again (`patiently`).
+ */
 function send(body: Record<string, unknown>, opts: AskOptions): Promise<ChatResponse> {
   const timeoutMs = opts.timeoutMs ?? 90_000;
   const onText = opts.onText;
   return patiently(
-    (left) => (onText ? postChatStream(body, left, onText) : postChat(body, left)),
+    async (left) => {
+      const started = Date.now();
+      try {
+        return await (onText ? postChatStream(body, left, onText) : postChat(body, left));
+      } catch (error) {
+        if (!worthBackup(error)) throw error;
+        const backup = await askBackup({ ...body, context: body.context ?? opts.fallbackContext }, left - (Date.now() - started));
+        if (backup.kind === "answer") {
+          return "conversation" in backup ? { reply: backup.reply, conversation: backup.conversation } : { reply: backup.reply };
+        }
+        if (backup.kind === "busy" || error instanceof AiBusyError) {
+          markBusy();
+          throw error instanceof AiBusyError
+            ? error
+            : new AiBusyError(textFor("İris şu an çok yoğun. Bir dakika sonra tekrar dener misin?", "Iris is very busy right now. Try again in a minute?"), false, null);
+        }
+        throw error;
+      }
+    },
     timeoutMs,
     opts.retries ?? RETRIES,
     opts.onWait

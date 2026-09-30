@@ -426,6 +426,7 @@ export function useAiConversation({
         if (!isTemporary) {
           const res = await askAiInConversation(outgoing, {
             context: currentId ? undefined : conversationContext(context),
+            fallbackContext: conversationContext(context),
             conversationId: currentId,
             surface: notebook ? notebookSurface(notebook) : surface,
             temperature,

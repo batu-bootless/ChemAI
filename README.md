@@ -43,13 +43,37 @@ npx supabase functions deploy iris-vision --no-verify-jwt
 
 ### Yoğunluk ve ücretsiz Gemini kotası
 
-Gemini'nin ücretsiz katmanında her modelin dakikalık (RPM) ve günlük (RPD) istek sınırı düşüktür ve bütün kullanıcılar aynı sınırı paylaşır. Sınır dolunca site `429` döndürür. Uygulama bu durumda (`src/lib/ai/busy.ts`):
+Gemini'nin ücretsiz katmanında her modelin dakikalık (RPM) ve günlük (RPD) istek sınırı düşüktür ve bütün kullanıcılar aynı sınırı paylaşır. Sınır dolunca site `429` döndürür. Uygulama bu durumda (`src/lib/ai/client.ts`, `busy.ts`):
 
-- Yanıtı hemen hata saymaz; birkaç saniye bekleyip en fazla iki kez yeniden sorar (sitenin ya da Gemini'nin söylediği bekleme süresine uyar). Beklerken yanıt balonunda "İris çok yoğun · N sn sonra yeniden soruyorum…" yazar.
+- Hemen **yedek yapay zekâya** geçer (aşağıda). Site çalışmıyorsa (5xx, bağlantı yok) da aynısını yapar.
+- Yedek de doluysa ya da kurulu değilse, birkaç saniye bekleyip en fazla iki kez yeniden sorar (sitenin ya da Gemini'nin söylediği bekleme süresine uyar). Beklerken yanıt balonunda "İris çok yoğun · N sn sonra yeniden soruyorum…" yazar.
 - Sonraki 5 dakika daha az çağrı harcar: planlayıcı çağrısı atlanır, cihazdaki kurallar planlar (soru başına 2 yerine 1 çağrı); belgeler üç bölüm yerine birer birer okunur.
 - Günlük sınır dolmuşsa yeniden denemez; kullanıcıya sınırın her gün yenilendiğini söyler (hesap motoru çalışmaya devam eder).
 
 Sitenin tarafında (bu repoda değil) yapılması gerekenler: kişi başına dakikalık/günlük soru sınırı ve modeller arasında sırayla deneme.
+
+### Yedek yapay zekâ (NVIDIA ve Gemma)
+
+`supabase/functions/iris-chat` sitenin yerine yanıt veren bir işlevdir; model zinciri `supabase/functions/_shared/router.ts` içindedir. İlk boş model yanıtlar:
+
+- **Zincir:** önce hızlı modeller: `nemotron-3-super` (düşünme kapalı), `gpt-oss-20b` (düşük akıl yürütme), Gemini anahtarıyla `gemma-4-31b-it`, `diffusiongemma-26b`. Sonra yavaş olanlar. En sonda `nvidia:auto`: NVIDIA'nın listesindeki diğer bütün sohbet modelleri; NVIDIA yeni bir model açarsa kendiliğinden kullanılır.
+- **Dolan model dinlenir:** 429'da 1 dakika (ya da API'nin söylediği kadar), 5xx ve zaman aşımında 30 sn–2 dk, hesapta olmayan model (404) 12 saat.
+- **Eşzamanlı istek sınırı:** Her modelde aynı anda en fazla 6–8 istek olur; fazlası sıradakine gider. Hızlı modellerin hepsi doluysa istek 20 saniyeye kadar yer açılmasını bekler, zinciri yeniden dolaşır; sonra yavaş modellere geçer. Hepsi doluysa 429 döner ve uygulama biraz sonra yeniden sorar.
+- **Yanıtın toparlanması:** Düşünme (`<think>`), modelin kopyaladığı ⟦CHEMPLUS-…⟧ işaretleri temizlenir. Çıplak kart JSON'u ` ```iris ` bloğuna alınır.
+- **Sınır ve kayıt:** Yalnızca giriş yapmış kullanıcılar kullanabilir; kişi başı dakikada 30 istek. Sohbet turu kullanıcının kendi oturumuyla geçmişe kaydedilir (tablolar izin vermezse uygulama "kaydedilemedi" der).
+
+Ölçüm (30 Eylül 2026, NVIDIA ücretsiz API, İris'in gerçek kılavuzuyla): aynı anda 30 soru → 30'u da yanıtlandı, çoğu 2–13 sn, en yavaşı 26 sn. NVIDIA'nın listelediği 81 modelden bu hesapta metin için çalışan ~10 tane var; kalanlar 404 ya da sohbet modeli değil.
+
+Bir kez kurulum (bilgisayarda, proje klasöründe; anahtar yalnızca Supabase'e girilir, koda ya da uygulamaya değil):
+
+```powershell
+npx supabase secrets set NVIDIA_API_KEY=<build.nvidia.com'dan alınan anahtar>
+npx supabase functions deploy iris-chat --no-verify-jwt
+```
+
+`GEMINI_API_KEY` (görsel okuma için girilmişse) Gemma'yı da zincire ekler. İsteğe bağlı: `IRIS_CHAT_MODELS` ile zincir değiştirilebilir (ör. `nvidia:openai/gpt-oss-20b,nvidia:auto`). Dikkat:
+- NVIDIA'nın ücretsiz API'si geliştirme ve deneme için sunuluyor; yayındaki bir uygulamada kullanmadan önce kullanım koşullarına bakın.
+- Yedek modeller Gemini'den zayıf olabilir. Molekül ve tepkime kartlarını hesap motoru yine doğrular, ama açıklama metinlerini doğrulamaz.
 
 ## Android kimliği
 

@@ -96,13 +96,17 @@ export default function PrivacyPage() {
           <p>Verilerinizi satmayız. Uygulamayı sunmak için şu sağlayıcılarla çalışırız:</p>
           <ul className="list-disc space-y-2 pl-5">
             <li>
-              <strong>Supabase:</strong> veritabanı, kimlik doğrulama, dosya depolama (profil fotoğrafı) ve fotoğrafları
-              görsel yapay zekâya ileten sunucu işlevi.
+              <strong>Supabase:</strong> veritabanı, kimlik doğrulama, dosya depolama (profil fotoğrafı), fotoğrafları
+              görsel yapay zekâya ve soruları yedek yapay zekâya ileten sunucu işlevleri.
             </li>
             <li><strong>Vercel:</strong> chemplus.com.tr sunucuları; yapay zekâ, sesli yanıt ve hesap silme istekleri bu sunucular üzerinden işlenir.</li>
             <li>
               <strong>Google:</strong> Google ile giriş; İris&apos;e gönderdiğiniz metinler yanıt üretilmesi, görsel yapay zekâ
               açıksa fotoğraflarınız okunması için Google Gemini API&apos;ye gönderilir.
+            </li>
+            <li>
+              <strong>NVIDIA:</strong> Google Gemini yoğun ya da ulaşılamaz olduğunda İris&apos;e gönderdiğiniz metinler, yanıt
+              üretilmesi için NVIDIA API&apos;sindeki yapay zekâ modellerine gönderilir.
             </li>
             <li><strong>Microsoft Azure ve Google:</strong> sesli yanıt açıksa, İris&apos;in yanıt metni sese çevrilmek için bu hizmetlere gönderilir.</li>
             <li>
