@@ -7,8 +7,11 @@
 // - its engine checks the structures (RDKit) and equations (the balancer) - and draws the answer
 // as cards.
 //
-// Deploy (README): supabase secrets set GEMINI_API_KEY=… ; supabase functions deploy iris-vision --no-verify-jwt
-// (the function checks the caller's session itself, so it works with any JWT signing setup).
+// Deploy (README): GEMINI_API_KEY as a function secret or in the Vault (../_shared/keys.ts), then
+// supabase functions deploy iris-vision --no-verify-jwt (the function checks the caller's session
+// itself, so it works with any JWT signing setup).
+
+import { aiKeys } from "../_shared/keys.ts";
 
 // Tried in turn: each Gemini model has its own limits (on the free tier a few requests a minute
 // each), so when one is busy (429), overloaded (503) or not offered (404), the next reads the photo.
@@ -19,7 +22,6 @@ const MODELS = (Deno.env.get("GEMINI_MODELS") ?? Deno.env.get("GEMINI_MODEL") ??
   .filter(Boolean);
 /** All the models together; the app gives up on the reading at 40 s. */
 const BUDGET_MS = 38_000;
-const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 /** About 6 MB of JPEG as base64; the app sends at most 1600 px (a few hundred KB). */
@@ -59,6 +61,7 @@ async function signedIn(req: Request): Promise<boolean> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Yalnızca POST." }, 405);
+  const GEMINI_KEY = (await aiKeys()).GEMINI_API_KEY;
   if (!GEMINI_KEY) return json({ error: "Görsel okuma kurulmamış (GEMINI_API_KEY yok)." }, 503);
   if (!(await signedIn(req))) return json({ error: "Giriş gerekli." }, 401);
 

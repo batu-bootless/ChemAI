@@ -7,13 +7,23 @@
 // requests under way is passed over - so many users at once spread over the models instead of
 // queueing on one. Nothing here is Deno-specific (fetch is passed in), so the unit tests run it.
 //
-// Measured on NVIDIA's free API (30 Sep 2026) with Iris's real prompt: nemotron-3-super without
-// its thinking answered in 2-15 s, gpt-oss-20b (low reasoning) in 3-16 s, both correct and in the
-// card format. Most of the 81 listed models are not served to a free account (404) or are not
-// chat models; "nvidia:auto" still adds every listed chat model at the end of the chain, so a
-// model NVIDIA turns on later is used without a new release.
+// Measured (30 Sep 2026) with Iris's real prompt: Groq answers in 1-2 s but takes about two
+// answers a minute per model (8000 tokens a minute, 1000 requests a day), so its three models open
+// the chain and a burst spills over to NVIDIA, where nemotron-3-super without its thinking and
+// gpt-oss-20b (low reasoning) answered 30 questions at once in 2-26 s, correct and in the card
+// format. Most of NVIDIA's 81 listed models are not served to a free account (404) or are not chat
+// models; "nvidia:auto" and "groq:auto" still add every listed chat model at the end of the chain,
+// so a model turned on later is used without a new release.
 
-export type Provider = "nvidia" | "gemini";
+export type Provider = "groq" | "nvidia" | "gemini";
+
+const PROVIDERS: Provider[] = ["groq", "nvidia", "gemini"];
+
+/** The OpenAI-style chat endpoints. */
+const CHAT_URL: Record<Exclude<Provider, "gemini">, string> = {
+  groq: "https://api.groq.com/openai/v1/chat/completions",
+  nvidia: "https://integrate.api.nvidia.com/v1/chat/completions",
+};
 
 export interface ModelEntry {
   provider: Provider;
@@ -54,25 +64,32 @@ const THINKING_OFF = { chat_template_kwargs: { enable_thinking: false } };
  * that has not answered by then is usually stuck in a queue, and the next one is quicker).
  */
 const KNOWN: Record<string, Partial<ModelEntry>> = {
-  // Quick: 1-16 s each with 6-8 questions at once.
-  "nvidia/nemotron-3-super-120b-a12b": { extra: THINKING_OFF, timeoutMs: 20_000, maxConcurrent: 6, slow: false },
-  "openai/gpt-oss-20b": { extra: { reasoning_effort: "low" }, timeoutMs: 20_000, maxConcurrent: 8, slow: false },
-  "gemma-4-31b-it": { timeoutMs: 25_000, slow: false },
-  "google/diffusiongemma-26b-a4b-it": { timeoutMs: 12_000, maxConcurrent: 8, slow: false },
+  // Groq: 1-2 s, but about two answers a minute per model.
+  "groq:openai/gpt-oss-120b": { extra: { reasoning_effort: "low" }, timeoutMs: 15_000, maxConcurrent: 2, slow: false },
+  "groq:qwen/qwen3.8-27b": { extra: { reasoning_format: "hidden" }, timeoutMs: 15_000, maxConcurrent: 2, slow: false },
+  "groq:openai/gpt-oss-20b": { extra: { reasoning_effort: "low" }, timeoutMs: 15_000, maxConcurrent: 2, slow: false },
+  // NVIDIA, quick: 1-16 s each with 6-8 questions at once.
+  "nvidia:nvidia/nemotron-3-super-120b-a12b": { extra: THINKING_OFF, timeoutMs: 20_000, maxConcurrent: 6, slow: false },
+  "nvidia:openai/gpt-oss-20b": { extra: { reasoning_effort: "low" }, timeoutMs: 20_000, maxConcurrent: 8, slow: false },
+  "gemini:gemma-4-31b-it": { timeoutMs: 25_000, slow: false },
+  "nvidia:google/diffusiongemma-26b-a4b-it": { timeoutMs: 12_000, maxConcurrent: 8, slow: false },
   // Slow under load (their queue fills): the last resort.
-  "google/gemma-4-31b-it": { timeoutMs: 35_000 },
-  "nvidia/nemotron-3-ultra-550b-a55b": { extra: THINKING_OFF, timeoutMs: 20_000 },
-  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning": { timeoutMs: 15_000 },
-  "meta/llama-3.2-11b-vision-instruct": { timeoutMs: 15_000 },
-  "z-ai/glm-5.3": { timeoutMs: 40_000, maxConcurrent: 2 },
-  "moonshotai/kimi-k3": { timeoutMs: 50_000, maxConcurrent: 2 },
+  "nvidia:google/gemma-4-31b-it": { timeoutMs: 35_000 },
+  "nvidia:nvidia/nemotron-3-ultra-550b-a55b": { extra: THINKING_OFF, timeoutMs: 20_000 },
+  "nvidia:nvidia/nemotron-3-nano-omni-30b-a3b-reasoning": { timeoutMs: 15_000 },
+  "nvidia:meta/llama-3.2-11b-vision-instruct": { timeoutMs: 15_000 },
+  "nvidia:z-ai/glm-5.3": { timeoutMs: 40_000, maxConcurrent: 2 },
+  "nvidia:moonshotai/kimi-k3": { timeoutMs: 50_000, maxConcurrent: 2 },
 };
 
 /**
- * Best answers first, then the quick ones, the slow ones last; `auto` adds the rest of NVIDIA's
- * chat models. IRIS_CHAT_MODELS replaces it.
+ * The fastest first (Groq), then the quick NVIDIA models, the slow ones last; `auto` adds the rest
+ * of each provider's chat models. IRIS_CHAT_MODELS replaces it.
  */
 export const DEFAULT_CHAIN = [
+  "groq:openai/gpt-oss-120b",
+  "groq:qwen/qwen3.8-27b",
+  "groq:openai/gpt-oss-20b",
   "nvidia:nvidia/nemotron-3-super-120b-a12b",
   "nvidia:openai/gpt-oss-20b",
   "gemini:gemma-4-31b-it",
@@ -83,15 +100,16 @@ export const DEFAULT_CHAIN = [
   "nvidia:meta/llama-3.2-11b-vision-instruct",
   "nvidia:z-ai/glm-5.3",
   "nvidia:moonshotai/kimi-k3",
+  "groq:auto",
   "nvidia:auto",
 ].join(",");
 
 /** A model nobody has measured gets a short try: an unknown one must not eat the question's time. */
 function entry(provider: Provider, id: string): ModelEntry {
-  return { provider, id, timeoutMs: 15_000, maxConcurrent: 4, slow: true, ...KNOWN[id] };
+  return { provider, id, timeoutMs: 15_000, maxConcurrent: 4, slow: true, ...KNOWN[`${provider}:${id}`] };
 }
 
-/** "nvidia:model,gemini:model,nvidia:auto" → entries (auto stays a marker, filled by `expand`). */
+/** "groq:model,nvidia:model,gemini:model,nvidia:auto" → entries (auto stays a marker, filled by `expand`). */
 export function parseChain(spec: string): ModelEntry[] {
   const out: ModelEntry[] = [];
   for (const raw of spec.split(",")) {
@@ -100,29 +118,32 @@ export function parseChain(spec: string): ModelEntry[] {
     if (colon < 1) continue;
     const provider = item.slice(0, colon) as Provider;
     const id = item.slice(colon + 1).trim();
-    if ((provider !== "nvidia" && provider !== "gemini") || !id) continue;
+    if (!PROVIDERS.includes(provider) || !id) continue;
     if (!out.some((e) => e.provider === provider && e.id === id)) out.push(entry(provider, id));
   }
   return out;
 }
 
-/** Listed models that are not for chat: embeddings, retrievers, safety guards, reward, OCR, images, code-only… */
+/** Listed models that are not for chat: embeddings, retrievers, safety guards, reward, OCR, images, speech, code-only… */
 const NOT_CHAT =
-  /embed|retriever|rerank|guard|safety|reward|parse|clip|deplot|kosmos|fuyu|neva|vila|detector|calibration|translate|cosmos|starcoder|codegemma|codellama|codestral|coder|laguna|recurrentgemma|gemma-2b|muse-glimmer|lightning|chatqa|mixtral-8x22b-v0\.1|llama2-70b/i;
+  /whisper|orpheus|allam|embed|retriever|rerank|guard|safety|reward|parse|clip|deplot|kosmos|fuyu|neva|vila|detector|calibration|translate|cosmos|starcoder|codegemma|codellama|codestral|coder|laguna|recurrentgemma|gemma-2b|muse-glimmer|lightning|chatqa|mixtral-8x22b-v0\.1|llama2-70b/i;
 
 export function isChatModel(id: string): boolean {
   return !NOT_CHAT.test(id);
 }
 
-/** The chain with "nvidia:auto" replaced by NVIDIA's listed chat models not already in it. */
-export function expand(chain: ModelEntry[], listed: string[]): ModelEntry[] {
+/** The chain with each "<provider>:auto" replaced by that provider's listed chat models not already in it. */
+export function expand(chain: ModelEntry[], listed: Partial<Record<Provider, string[]>>): ModelEntry[] {
   const out: ModelEntry[] = [];
   for (const item of chain) {
-    if (item.provider === "nvidia" && item.id === "auto") {
-      for (const id of listed) {
-        if (isChatModel(id) && !chain.some((e) => e.provider === "nvidia" && e.id === id) && !out.some((e) => e.id === id)) out.push(entry("nvidia", id));
-      }
-    } else out.push(item);
+    if (item.id !== "auto") {
+      out.push(item);
+      continue;
+    }
+    for (const id of listed[item.provider] ?? []) {
+      const known = (e: ModelEntry) => e.provider === item.provider && e.id === id;
+      if (isChatModel(id) && !chain.some(known) && !out.some(known)) out.push(entry(item.provider, id));
+    }
   }
   return out;
 }
@@ -191,10 +212,7 @@ export function normalizeReply(text: string): string {
 
 // --- one model --------------------------------------------------------------------------------------
 
-export interface Keys {
-  nvidia?: string;
-  gemini?: string;
-}
+export type Keys = Partial<Record<Provider, string>>;
 
 type Fetch = (input: string, init: RequestInit) => Promise<Response>;
 
@@ -209,11 +227,11 @@ async function ask(e: ModelEntry, req: ChatRequest, keys: Keys, fetcher: Fetch, 
   const signal = AbortSignal.timeout(timeoutMs);
   const temperature = typeof req.temperature === "number" ? Math.min(1, Math.max(0, req.temperature)) : 0.35;
   let res: Response;
-  if (e.provider === "nvidia") {
+  if (e.provider !== "gemini") {
     const messages = [...(req.context ? [{ role: "system", content: req.context }] : []), ...req.messages];
-    res = await fetcher("https://integrate.api.nvidia.com/v1/chat/completions", {
+    res = await fetcher(CHAT_URL[e.provider], {
       method: "POST",
-      headers: { Authorization: `Bearer ${keys.nvidia}`, "Content-Type": "application/json", Accept: "application/json" },
+      headers: { Authorization: `Bearer ${keys[e.provider]}`, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ model: e.id, messages, temperature, max_tokens: 4096, stream: false, ...e.extra }),
       signal,
     });
@@ -236,7 +254,7 @@ async function ask(e: ModelEntry, req: ChatRequest, keys: Keys, fetcher: Fetch, 
   try {
     const json = JSON.parse(body);
     text =
-      e.provider === "nvidia"
+      e.provider !== "gemini"
         ? String(json?.choices?.[0]?.message?.content ?? "")
         : (json?.candidates?.[0]?.content?.parts ?? []).map((part: { text?: string }) => part.text ?? "").join("");
   } catch {
@@ -268,7 +286,7 @@ export async function route(
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const started = now();
   const deadline = started + req.budgetMs;
-  const usable = chain.filter((e) => (e.provider === "nvidia" ? deps.keys.nvidia : deps.keys.gemini));
+  const usable = chain.filter((e) => deps.keys[e.provider]);
   const tried: string[] = [];
   /** What each failed model said, for the function's log. */
   const notes: string[] = [];
@@ -286,23 +304,24 @@ export async function route(
       const left = deadline - now();
       if (left < 2500) break;
       asked = true;
-      tried.push(e.id);
+      const name = `${e.provider}:${e.id}`;
+      tried.push(name);
       deps.health.begin(e);
       try {
         const answer = await ask(e, req, deps.keys, deps.fetch, Math.min(e.timeoutMs, left - 500));
         if (answer.status === 200) {
           const reply = normalizeReply(answer.text);
-          if (reply) return { ok: true, reply, model: e.id, tried };
-          notes.push(`${e.id}: boş yanıt`);
+          if (reply) return { ok: true, reply, model: name, tried };
+          notes.push(`${name}: boş yanıt`);
           deps.health.rest(e, 5 * 60_000, now());
           continue;
         }
-        notes.push(`${e.id}: ${answer.status}`);
+        notes.push(`${name}: ${answer.status}`);
         if (answer.status === 429 || answer.status >= 500) busy = true;
         deps.health.rest(e, Health.restFor(answer.status, answer.wait), now());
       } catch {
         // No answer in time, or no connection: the next model.
-        notes.push(`${e.id}: süre doldu`);
+        notes.push(`${name}: süre doldu`);
         busy = true;
         deps.health.rest(e, Health.restFor(0, null), now());
       } finally {

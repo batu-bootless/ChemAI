@@ -26,12 +26,23 @@ describe("parseChain", () => {
     const chain = parseChain("nvidia:nvidia/nemotron-3-super-120b-a12b, gemini:gemma-4-31b-it,foo:bar,nvidia:,nvidia:nvidia/nemotron-3-super-120b-a12b,nvidia:auto");
     expect(chain.map((e) => `${e.provider}:${e.id}`)).toEqual(["nvidia:nvidia/nemotron-3-super-120b-a12b", "gemini:gemma-4-31b-it", "nvidia:auto"]);
     expect(chain[0].extra).toEqual({ chat_template_kwargs: { enable_thinking: false } });
-    expect(parseChain(DEFAULT_CHAIN)[0].id).toBe("nvidia/nemotron-3-super-120b-a12b");
+    expect(parseChain(DEFAULT_CHAIN).slice(0, 4).map((e) => `${e.provider}:${e.id}`)).toEqual([
+      "groq:openai/gpt-oss-120b",
+      "groq:qwen/qwen3.8-27b",
+      "groq:openai/gpt-oss-20b",
+      "nvidia:nvidia/nemotron-3-super-120b-a12b",
+    ]);
+    // The same model on two providers keeps each provider's settings.
+    const [groq, nvidia] = parseChain("groq:openai/gpt-oss-20b,nvidia:openai/gpt-oss-20b");
+    expect([groq.maxConcurrent, nvidia.maxConcurrent]).toEqual([2, 8]);
   });
 
-  it("adds NVIDIA's other chat models for auto, leaving out embeddings, guards and code models", () => {
-    const chain = expand(parseChain("nvidia:a/one,nvidia:auto"), ["a/one", "b/two-70b-instruct", "nvidia/nv-embedqa-mistral-7b-v2", "meta/llama-guard-4-12b", "bigcode/starcoder2-15b"]);
-    expect(chain.map((e) => e.id)).toEqual(["a/one", "b/two-70b-instruct"]);
+  it("adds each provider's other chat models for auto, leaving out embeddings, guards, speech and code models", () => {
+    const chain = expand(parseChain("nvidia:a/one,groq:auto,nvidia:auto"), {
+      nvidia: ["a/one", "b/two-70b-instruct", "nvidia/nv-embedqa-mistral-7b-v2", "meta/llama-guard-4-12b", "bigcode/starcoder2-15b"],
+      groq: ["openai/gpt-oss-120b", "whisper-large-v3", "meta-llama/llama-prompt-guard-2-86m", "openai/gpt-oss-safeguard-20b"],
+    });
+    expect(chain.map((e) => `${e.provider}:${e.id}`)).toEqual(["nvidia:a/one", "groq:openai/gpt-oss-120b", "nvidia:b/two-70b-instruct"]);
     expect(isChatModel("nvidia/nemotron-parse")).toBe(false);
   });
 });
@@ -52,15 +63,15 @@ describe("route", () => {
     const { fetcher, calls } = fakeFetch({ first: () => status(429, { "retry-after": "20" }), second: () => ok("İkinci yanıtladı") });
     const chain = [model("first"), model("second")];
     const result = await route(req, chain, { keys, fetch: fetcher, health, now: () => now });
-    expect(result).toMatchObject({ ok: true, reply: "İkinci yanıtladı", model: "second", tried: ["first", "second"] });
+    expect(result).toMatchObject({ ok: true, reply: "İkinci yanıtladı", model: "nvidia:second", tried: ["nvidia:first", "nvidia:second"] });
     expect(calls[1].body.messages).toEqual([{ role: "system", content: "Kılavuz" }, { role: "user", content: "NaCl nedir?" }]);
     // Resting: the next question goes straight to the second model…
     now += 10_000;
     const again = await route(req, chain, { keys, fetch: fetcher, health, now: () => now });
-    expect(again.tried).toEqual(["second"]);
+    expect(again.tried).toEqual(["nvidia:second"]);
     // …until the first one's 20 s are over.
     now += 15_000;
-    expect((await route(req, chain, { keys, fetch: fetcher, health, now: () => now })).tried).toEqual(["first", "second"]);
+    expect((await route(req, chain, { keys, fetch: fetcher, health, now: () => now })).tried).toEqual(["nvidia:first", "nvidia:second"]);
   });
 
   it("passes over a model that already has its share of requests", async () => {
@@ -69,7 +80,7 @@ describe("route", () => {
     health.begin(full);
     const { fetcher } = fakeFetch({ full: () => ok("dolu"), free: () => ok("boş") });
     const result = await route(req, [full, model("free")], { keys, fetch: fetcher, health });
-    expect(result).toMatchObject({ ok: true, model: "free" });
+    expect(result).toMatchObject({ ok: true, model: "nvidia:free" });
   });
 
   it("waits for a quick model to free up rather than take a slow one", async () => {
@@ -80,7 +91,7 @@ describe("route", () => {
     // The other question on the quick model finishes while this one waits.
     const sleep = async () => health.end(quick);
     const result = await route(req, [quick, model("lazy", { slow: true })], { keys, fetch: fetcher, health, sleep });
-    expect(result).toMatchObject({ ok: true, model: "quick", tried: ["quick"] });
+    expect(result).toMatchObject({ ok: true, model: "nvidia:quick", tried: ["nvidia:quick"] });
   });
 
   it("takes a slow model once the question has waited long enough", async () => {
@@ -98,7 +109,7 @@ describe("route", () => {
         now += 7_000;
       },
     });
-    expect(result).toMatchObject({ ok: true, model: "lazy" });
+    expect(result).toMatchObject({ ok: true, model: "nvidia:lazy" });
     expect(now).toBeGreaterThanOrEqual(20_000);
   });
 
@@ -113,7 +124,7 @@ describe("route", () => {
     const hanging = async (url: string, init: RequestInit) =>
       Promise.race([fetcher(url, init), new Promise<Response>((_, reject) => init.signal?.addEventListener("abort", () => reject(new Error("timeout"))))]);
     const result = await route(req, [model("gone"), slow, model("good")], { keys, fetch: hanging, health, now: () => now });
-    expect(result).toMatchObject({ ok: true, model: "good", tried: ["gone", "slow", "good"] });
+    expect(result).toMatchObject({ ok: true, model: "nvidia:good", tried: ["nvidia:gone", "nvidia:slow", "nvidia:good"] });
     now = 60_000;
     expect(health.available(slow, now)).toBe(false);
     now = 3 * 60_000;
@@ -125,8 +136,22 @@ describe("route", () => {
   it("says busy when every model is resting, and not set up without keys", async () => {
     const health = new Health();
     const { fetcher } = fakeFetch({ a: () => status(503), b: () => status(429) });
-    expect(await route(req, [model("a"), model("b")], { keys, fetch: fetcher, health })).toMatchObject({ ok: false, status: 429, notes: ["a: 503", "b: 429"] });
+    expect(await route(req, [model("a"), model("b")], { keys, fetch: fetcher, health })).toMatchObject({ ok: false, status: 429, notes: ["nvidia:a: 503", "nvidia:b: 429"] });
     expect(await route(req, [model("a")], { keys: {}, fetch: fetcher, health: new Health() })).toMatchObject({ ok: false, status: 503 });
+  });
+
+  it("asks Groq first and spills over to NVIDIA when Groq's minute is used up", async () => {
+    const health = new Health();
+    const { fetcher, calls } = fakeFetch({ "openai/gpt-oss-120b": () => status(429, { "retry-after": "18" }) });
+    const nvidia = fakeFetch({ nemo: () => ok("NVIDIA yanıtladı") });
+    const both = (url: string, init: RequestInit) => (url.includes("groq.com") ? fetcher(url, init) : nvidia.fetcher(url, init));
+    const chain = [{ ...model("openai/gpt-oss-120b"), provider: "groq" as const }, model("nemo")];
+    const result = await route(req, chain, { keys: { ...keys, groq: "q" }, fetch: both, health });
+    expect(result).toMatchObject({ ok: true, model: "nvidia:nemo", tried: ["groq:openai/gpt-oss-120b", "nvidia:nemo"] });
+    expect(calls[0].url).toBe("https://api.groq.com/openai/v1/chat/completions");
+    // Without a Groq key the Groq models are left out.
+    const again = await route(req, chain, { keys, fetch: both, health: new Health() });
+    expect(again.tried).toEqual(["nvidia:nemo"]);
   });
 
   it("asks Gemma on the Gemini key with the guide in the first message", async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 // ChemAI: Iris's backup AI - the iris-chat Supabase function (supabase/functions/iris-chat), a chain
-// of free models (NVIDIA's API, and Gemma on the Gemini key) that the app asks when the website is
+// of free models (Groq, NVIDIA, and Gemma on the Gemini key) that the app asks when the website is
 // busy, out of its day's quota or down. Until the function is deployed (README) nothing changes:
 // a missing function is not asked again for six hours.
 

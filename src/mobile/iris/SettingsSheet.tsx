@@ -1025,7 +1025,7 @@ function AboutPage({ onClose }: { onClose: () => void }) {
     <div className="pt-2">
       <Card>
         <Row label={<Wordmark height={20} />} detail={l("Sürüm 1.0.0", "Version 1.0.0")} />
-        <Row label={l("Yapay zekâ", "AI")} detail={l("İris · Google Gemini ile, chemplus.com.tr üzerinden; yoğunlukta NVIDIA'daki modeller", "Iris · Google Gemini, through chemplus.com.tr; NVIDIA's models when it is busy")} />
+        <Row label={l("Yapay zekâ", "AI")} detail={l("İris · Google Gemini ile, chemplus.com.tr üzerinden; yoğunlukta Groq ve NVIDIA'daki modeller", "Iris · Google Gemini, through chemplus.com.tr; Groq's and NVIDIA's models when it is busy")} />
         <Row label={l("Hesap motoru", "Calculation engine")} detail={l("Cihazda: RDKit, ChemAI çözücüleri ve güvenlik kartları", "On the device: RDKit, ChemAI solvers and safety cards")} />
         <Row label={l("Ses", "Voice")} detail="Microsoft Azure · Google" last />
       </Card>

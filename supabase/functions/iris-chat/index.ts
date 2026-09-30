@@ -1,16 +1,16 @@
 // ChemAI: Iris's backup AI (a Supabase Edge Function, Deno). The app asks the website first
 // (Gemini); when the website is busy, its day's quota is gone or it is down, the app asks here, and
-// this function walks a chain of free models (NVIDIA's API, and Gemma on the Gemini key) until one
+// this function walks a chain of free models (Groq, NVIDIA, and Gemma on the Gemini key) until one
 // answers - see ../_shared/router.ts. A conversation turn is saved to the chat history with the
 // user's own session, as the website would, when the tables allow it.
 //
-// Deploy (README): supabase secrets set NVIDIA_API_KEY=… ; supabase functions deploy iris-chat --no-verify-jwt
-// (the function checks the caller's session itself). IRIS_CHAT_MODELS replaces the model chain.
+// Deploy (README): the keys as function secrets or in the Vault (../_shared/keys.ts), then
+// supabase functions deploy iris-chat --no-verify-jwt (the function checks the caller's session
+// itself). IRIS_CHAT_MODELS replaces the model chain.
 
-import { DEFAULT_CHAIN, Health, expand, parseChain, route, type ChatMessage, type ModelEntry } from "../_shared/router.ts";
+import { aiKeys } from "../_shared/keys.ts";
+import { DEFAULT_CHAIN, Health, expand, parseChain, route, type ChatMessage, type Keys, type ModelEntry, type Provider } from "../_shared/router.ts";
 
-const NVIDIA_KEY = Deno.env.get("NVIDIA_API_KEY");
-const GEMINI_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 const CHAIN = parseChain(Deno.env.get("IRIS_CHAT_MODELS") ?? DEFAULT_CHAIN);
@@ -31,21 +31,39 @@ function json(body: unknown, status = 200): Response {
 
 const health = new Health();
 
-// NVIDIA's model list, for "nvidia:auto": read once an hour.
-let listed: { at: number; ids: string[] } = { at: 0, ids: [] };
+// The providers' model lists, for "<provider>:auto": read once an hour.
+const LISTS: Partial<Record<Provider, string>> = {
+  nvidia: "https://integrate.api.nvidia.com/v1/models",
+  groq: "https://api.groq.com/openai/v1/models",
+};
+const listed: Partial<Record<Provider, { at: number; ids: string[] }>> = {};
 
-async function chain(): Promise<ModelEntry[]> {
-  if (!NVIDIA_KEY || !CHAIN.some((e) => e.provider === "nvidia" && e.id === "auto")) return expand(CHAIN, []);
-  if (Date.now() - listed.at > 60 * 60_000) {
-    try {
-      const res = await fetch("https://integrate.api.nvidia.com/v1/models", { signal: AbortSignal.timeout(5000) });
-      const data = await res.json();
-      listed = { at: Date.now(), ids: (data?.data ?? []).map((m: { id?: string }) => String(m.id ?? "")).filter(Boolean) };
-    } catch {
-      listed = { at: Date.now() - 55 * 60_000, ids: listed.ids };
-    }
+async function list(provider: Provider, key: string): Promise<string[]> {
+  const known = listed[provider];
+  if (known && Date.now() - known.at < 60 * 60_000) return known.ids;
+  try {
+    const res = await fetch(LISTS[provider]!, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(5000) });
+    const data = await res.json();
+    // A model with a small context cannot take Iris's guide (about 3000 tokens) and a question.
+    const ids = (data?.data ?? [])
+      .filter((m: { context_window?: number }) => !m.context_window || m.context_window >= 16_000)
+      .map((m: { id?: string }) => String(m.id ?? ""))
+      .filter(Boolean);
+    listed[provider] = { at: Date.now(), ids };
+  } catch {
+    // Asked again in five minutes.
+    listed[provider] = { at: Date.now() - 55 * 60_000, ids: known?.ids ?? [] };
   }
-  return expand(CHAIN, listed.ids);
+  return listed[provider]!.ids;
+}
+
+async function chain(keys: Keys): Promise<ModelEntry[]> {
+  const lists: Partial<Record<Provider, string[]>> = {};
+  for (const provider of ["nvidia", "groq"] as const) {
+    const key = keys[provider];
+    if (key && CHAIN.some((e) => e.provider === provider && e.id === "auto")) lists[provider] = await list(provider, key);
+  }
+  return expand(CHAIN, lists);
 }
 
 const recent = new Map<string, number[]>();
@@ -144,7 +162,9 @@ async function save(user: { id: string; token: string }, conversation: { id?: un
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Yalnızca POST." }, 405);
-  if (!NVIDIA_KEY && !GEMINI_KEY) return json({ error: "Yedek yapay zekâ kurulmamış." }, 503);
+  const stored = await aiKeys();
+  const keys: Keys = { groq: stored.GROQ_API_KEY, nvidia: stored.NVIDIA_API_KEY, gemini: stored.GEMINI_API_KEY };
+  if (!keys.groq && !keys.nvidia && !keys.gemini) return json({ error: "Yedek yapay zekâ kurulmamış." }, 503);
   const user = await caller(req);
   if (!user) return json({ error: "Giriş gerekli." }, 401);
   if (!allowed(user.id)) return json({ error: "Çok hızlı soruyorsun; birkaç saniye sonra tekrar dene." }, 429);
@@ -164,8 +184,8 @@ Deno.serve(async (req) => {
   const temperature = typeof body.temperature === "number" ? body.temperature : undefined;
   const budgetMs = Math.min(60_000, Math.max(5_000, typeof body.budgetMs === "number" ? body.budgetMs : 45_000));
 
-  const result = await route({ messages, context, temperature, budgetMs }, await chain(), {
-    keys: { nvidia: NVIDIA_KEY, gemini: GEMINI_KEY },
+  const result = await route({ messages, context, temperature, budgetMs }, await chain(keys), {
+    keys,
     fetch,
     health,
   });

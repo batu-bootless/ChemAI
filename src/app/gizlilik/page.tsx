@@ -105,8 +105,8 @@ export default function PrivacyPage() {
               açıksa fotoğraflarınız okunması için Google Gemini API&apos;ye gönderilir.
             </li>
             <li>
-              <strong>NVIDIA:</strong> Google Gemini yoğun ya da ulaşılamaz olduğunda İris&apos;e gönderdiğiniz metinler, yanıt
-              üretilmesi için NVIDIA API&apos;sindeki yapay zekâ modellerine gönderilir.
+              <strong>Groq ve NVIDIA:</strong> Google Gemini yoğun ya da ulaşılamaz olduğunda İris&apos;e gönderdiğiniz metinler,
+              yanıt üretilmesi için Groq ve NVIDIA API&apos;lerindeki yapay zekâ modellerine gönderilir.
             </li>
             <li><strong>Microsoft Azure ve Google:</strong> sesli yanıt açıksa, İris&apos;in yanıt metni sese çevrilmek için bu hizmetlere gönderilir.</li>
             <li>
