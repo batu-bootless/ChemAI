@@ -28,7 +28,7 @@ Yazılı sohbette İris yanıtını kartlarla verir: sonuç, soru-cevap, molekü
 
 ### Görsel yapay zekâ (fotoğraftan yapı ve tepkime okuma)
 
-Telefonun metin okuyucusu (ML Kit) yapı çizimlerini ve tepkime oklarını okuyamaz. Fotoğraf bu yüzden, ayarlarda "Görsel yapay zekâ ile oku" açıksa, `supabase/functions/iris-vision` işlevine gider. İşlev fotoğrafı Gemini'nin görsel modeline gösterir ve soruları, yapıları (SMILES), tepkimeleri ve formülleri okur; soruyu çözmez. Uygulama bu okumayla soruyu her zamanki gibi çözer; yapılar ve denklemler cihazda doğrulanır. İşlev kurulu değilse uygulama eskisi gibi yalnızca telefonda okur (6 saat sonra yeniden dener).
+Telefonun metin okuyucusu (ML Kit) yapı çizimlerini ve tepkime oklarını okuyamaz. Fotoğraf bu yüzden, ayarlarda "Görsel yapay zekâ ile oku" açıksa, `supabase/functions/iris-vision` işlevine gider. İşlev fotoğrafı Gemini'nin görsel modeline gösterir ve soruları, yapıları (SMILES), tepkimeleri ve formülleri okur; soruyu çözmez. Uygulama bu okumayla soruyu her zamanki gibi çözer; yapılar ve denklemler cihazda doğrulanır. İşlev kurulu değilse uygulama eskisi gibi yalnızca telefonda okur (1 saat sonra yeniden dener).
 
 Bir kez kurulum (bilgisayarda, proje klasöründe):
 

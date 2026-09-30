@@ -25,8 +25,8 @@ export interface VisionReading {
 
 const FUNCTION = "iris-vision";
 const MISSING_KEY = "chemai:vision-missing-until";
-/** Not deployed: asked again after six hours. Unreachable: after ten minutes. Every model busy: after two. */
-const MISSING_PAUSE_MS = 6 * 60 * 60 * 1000;
+/** Not deployed: asked again after an hour. Unreachable: after ten minutes. Every model busy: after two. */
+const MISSING_PAUSE_MS = 60 * 60 * 1000;
 const OFFLINE_PAUSE_MS = 10 * 60 * 1000;
 const BUSY_PAUSE_MS = 2 * 60 * 1000;
 const TIMEOUT_MS = 40_000;

@@ -3,7 +3,7 @@
 // ChemAI: Iris's backup AI - the iris-chat Supabase function (supabase/functions/iris-chat), a chain
 // of free models (Groq, NVIDIA, and Gemma on the Gemini key) that the app asks when the website is
 // busy, out of its day's quota or down. Until the function is deployed (README) nothing changes:
-// a missing function is not asked again for six hours.
+// a missing function is not asked again for an hour.
 
 import { createClient } from "@/lib/supabase/client";
 import type { AiConversationSummary } from "@/lib/ai/history";
@@ -11,8 +11,8 @@ import { since, trace } from "./trace";
 
 const FUNCTION = "iris-chat";
 const MISSING_KEY = "chemai:backup-missing-until";
-/** Not deployed or not set up: asked again after six hours. */
-const MISSING_PAUSE_MS = 6 * 60 * 60 * 1000;
+/** Not deployed or not set up: asked again after an hour. */
+const MISSING_PAUSE_MS = 60 * 60 * 1000;
 /** Less than this left of the question's time: not worth starting the chain. */
 const MIN_TIME_MS = 5000;
 
