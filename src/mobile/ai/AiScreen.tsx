@@ -20,6 +20,7 @@ import {
   AudioLines,
   Calculator,
   Camera,
+  Expand,
   FileSpreadsheet,
   FileText,
   Files,
@@ -34,6 +35,7 @@ import {
   Timer,
   X,
 } from "lucide-react";
+import ImageViewer from "@/components/ai/ImageViewer";
 import { useAiConversation } from "@/components/ai/useAiConversation";
 import { prepareImage, readImageText, imageNote, type PreparedImage } from "@/lib/ai/vision";
 import { readImageWithAi, type VisionReading } from "@/lib/ai/visionAi";
@@ -228,7 +230,12 @@ export default function AiScreen({ notebookId = null }: { notebookId?: string | 
     if (!ready) return;
     const image =
       attachment?.kind === "image" && attachment.image
-        ? { thumb: attachment.thumb, note: imageNote(attachment.text, attachment.image.color, attachment.reading) }
+        ? {
+            thumb: attachment.thumb,
+            // The 1600 px copy, for the full-screen viewer (kept in memory for this chat only).
+            full: `data:image/jpeg;base64,${attachment.image.base64}`,
+            note: imageNote(attachment.text, attachment.image.color, attachment.reading),
+          }
         : undefined;
     const data = attachment?.kind === "data" ? { name: attachment.file.name, csv: attachment.file.csv } : undefined;
     const file = attachment?.kind === "file" ? attachment.doc : undefined;
@@ -695,6 +702,7 @@ function UserBubble({ turn }: { turn: ReturnType<typeof useAiConversation>["mess
   const l = useL();
   const reduce = useReducedMotion();
   const [showText, setShowText] = useState(false);
+  const [viewing, setViewing] = useState(false);
   return (
     <motion.div
       className="flex flex-col items-end gap-1.5"
@@ -703,9 +711,20 @@ function UserBubble({ turn }: { turn: ReturnType<typeof useAiConversation>["mess
       transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
     >
       {turn.image?.thumb && (
-        // eslint-disable-next-line @next/next/no-img-element -- a local data URL
-        <img src={turn.image.thumb} alt="" className="max-h-48 max-w-[70%] rounded-3xl object-cover shadow-[0_6px_18px_-8px_rgb(30_20_60/0.35)]" />
+        <button
+          type="button"
+          onClick={() => setViewing(true)}
+          aria-label={l("Fotoğrafı tam ekran aç", "Open the photo full screen")}
+          className="group relative max-w-[70%] overflow-hidden rounded-3xl shadow-[0_6px_18px_-8px_rgb(30_20_60/0.35)] transition active:scale-[0.98]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- a local data URL */}
+          <img src={turn.image.thumb} alt="" className="block max-h-48 object-cover" />
+          <span className="absolute bottom-2 right-2 grid size-7 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm">
+            <Expand className="size-3.5" strokeWidth={2.6} />
+          </span>
+        </button>
       )}
+      {viewing && turn.image?.thumb && <ImageViewer src={turn.image.full ?? turn.image.thumb} onClose={() => setViewing(false)} />}
       {turn.image && !turn.image.thumb && (
         <span className="flex items-center gap-1.5 rounded-full bg-[#EDECF3] px-3 py-1 text-[12px] font-medium text-[#5B5B69]">
           <ImagePlus className="size-3.5" strokeWidth={2.2} /> {l("Fotoğraf", "Photo")}
@@ -974,6 +993,7 @@ function visionSummary(reading: VisionReading, l: <T>(tr: T, en: T) => T): strin
 function AttachmentPreview({ attachment, onRemove }: { attachment: Extract<Attachment, { kind: "image" }>; onRemove: () => void }) {
   const l = useL();
   const reduce = useReducedMotion();
+  const [viewing, setViewing] = useState(false);
   const status =
     attachment.status === "preparing"
       ? l("Fotoğraf hazırlanıyor…", "Preparing the photo…")
@@ -995,8 +1015,21 @@ function AttachmentPreview({ attachment, onRemove }: { attachment: Extract<Attac
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 8 }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- a local preview */}
-      <img src={attachment.thumb} alt="" className="relative z-[2] size-11 shrink-0 rounded-xl object-cover" />
+      <button
+        type="button"
+        onClick={() => setViewing(true)}
+        aria-label={l("Fotoğrafı tam ekran aç", "Open the photo full screen")}
+        className="relative z-[2] size-11 shrink-0 overflow-hidden rounded-xl transition active:scale-95"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- a local preview */}
+        <img src={attachment.thumb} alt="" className="size-full object-cover" />
+      </button>
+      {viewing && (
+        <ImageViewer
+          src={attachment.image ? `data:image/jpeg;base64,${attachment.image.base64}` : attachment.thumb}
+          onClose={() => setViewing(false)}
+        />
+      )}
       <div className="relative z-[2] min-w-0 flex-1">
         <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#1C1C22]">
           {(attachment.status === "preparing" || attachment.status === "reading") && <Loader2 className="size-3.5 animate-spin" />}

@@ -62,8 +62,9 @@ export interface ChatTurn {
   verification?: Verification | null;
   /** Assistant: hazards and incompatible pairs in a lab question (Güvenlik taraması). */
   safety?: SafetyScan | null;
-  /** User: the photo that came with the question (thumbnail only on this device). */
-  image?: { thumb?: string; note: ImageNote };
+  /** User: the photo that came with the question (on this device only): its thumbnail, and while
+   * the chat is open the sharper copy the full-screen viewer shows. */
+  image?: { thumb?: string; full?: string; note: ImageNote };
   /** User: a data file (CSV) that came with the question. */
   data?: DataFile;
   /** User: a document (PDF, Word…) that came with the question: its name and what it is. */
@@ -73,7 +74,7 @@ export interface ChatTurn {
 
 export interface SendOptions {
   fresh?: boolean;
-  image?: { thumb?: string; note: ImageNote };
+  image?: { thumb?: string; full?: string; note: ImageNote };
   data?: DataFile;
   /** A document read on the phone (lib/files/read.ts): it joins the chat, and every later question sees it too. */
   file?: FileDoc;
