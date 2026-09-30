@@ -22,6 +22,15 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- Google sign-in in the browser comes back here (src/mobile/googleSignIn.ts):
+                 com.chemai.app://auth-callback, com.chemai.app.test://auth-callback in test builds. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="${applicationId}" android:host="auth-callback" />
+            </intent-filter>
         </activity>
 
         <!-- Iris reads text off photos with ML Kit's on-device Latin model, installed by

@@ -2,7 +2,7 @@
 
 // ChemAI sign-in screen (Iris needs an account, so the app opens here when signed out). Two views: choosing how to continue, and the email form with the
 // Log in / Sign up switcher. Google takes the place of Apple; the rest follows the design given.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Beaker, Eye, EyeOff, Loader2, Mail, Mic, Sparkles } from "lucide-react";
@@ -12,7 +12,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useL } from "@/mobile/i18n";
 import Wordmark from "@/mobile/brand/Wordmark";
 import { isGoogleSignInEnabled } from "./googleFeatureFlag";
-import { openExternal, WEBSITE_ORIGIN } from "@/mobile/native";
+import { isNativeApp, openExternal, WEBSITE_ORIGIN } from "@/mobile/native";
+import { finishGoogleSignInFromLaunch } from "@/mobile/googleSignIn";
 
 function GoogleIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -169,6 +170,26 @@ export default function AuthScreen({ tab, next }: { tab: "login" | "register"; n
     }
     setBusy(false);
   };
+
+  // A Google sign-in in the browser whose way back started the app anew finishes here
+  // (src/mobile/googleSignIn.ts).
+  useEffect(() => {
+    if (!isNativeApp()) return;
+    let active = true;
+    void finishGoogleSignInFromLaunch().then(async (result) => {
+      if (!active || !result) return;
+      if (result.ok) {
+        refreshProfile();
+        await done();
+      } else if (!result.canceled) {
+        setError(result.error);
+      }
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the screen opens
+  }, []);
 
   return (
     <div className="app-light min-h-screen bg-[#ecebe8] flex items-center justify-center p-4 font-sans text-slate-800">
