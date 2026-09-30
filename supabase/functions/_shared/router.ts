@@ -83,16 +83,17 @@ const KNOWN: Record<string, Partial<ModelEntry>> = {
 };
 
 /**
- * The fastest first (Groq), then the quick NVIDIA models, the slow ones last; `auto` adds the rest
- * of each provider's chat models. IRIS_CHAT_MODELS replaces it.
+ * After Gemini (the website), the best answers first: the large models (gpt-oss-120b on Groq, 1-2
+ * s; nemotron-3-super on NVIDIA), then the smaller quick ones, the slow ones last; `auto` adds the
+ * rest of each provider's chat models. IRIS_CHAT_MODELS replaces it.
  */
 export const DEFAULT_CHAIN = [
   "groq:openai/gpt-oss-120b",
-  "groq:qwen/qwen3.8-27b",
-  "groq:openai/gpt-oss-20b",
   "nvidia:nvidia/nemotron-3-super-120b-a12b",
-  "nvidia:openai/gpt-oss-20b",
+  "groq:qwen/qwen3.8-27b",
   "gemini:gemma-4-31b-it",
+  "groq:openai/gpt-oss-20b",
+  "nvidia:openai/gpt-oss-20b",
   "nvidia:google/diffusiongemma-26b-a4b-it",
   "nvidia:google/gemma-4-31b-it",
   "nvidia:nvidia/nemotron-3-ultra-550b-a55b",

@@ -28,9 +28,9 @@ describe("parseChain", () => {
     expect(chain[0].extra).toEqual({ chat_template_kwargs: { enable_thinking: false } });
     expect(parseChain(DEFAULT_CHAIN).slice(0, 4).map((e) => `${e.provider}:${e.id}`)).toEqual([
       "groq:openai/gpt-oss-120b",
-      "groq:qwen/qwen3.8-27b",
-      "groq:openai/gpt-oss-20b",
       "nvidia:nvidia/nemotron-3-super-120b-a12b",
+      "groq:qwen/qwen3.8-27b",
+      "gemini:gemma-4-31b-it",
     ]);
     // The same model on two providers keeps each provider's settings.
     const [groq, nvidia] = parseChain("groq:openai/gpt-oss-20b,nvidia:openai/gpt-oss-20b");

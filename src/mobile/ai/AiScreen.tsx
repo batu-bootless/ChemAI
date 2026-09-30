@@ -258,7 +258,7 @@ export default function AiScreen({ notebookId = null }: { notebookId?: string | 
       URL.revokeObjectURL(temporary);
       // The phone's own text reading and, when allowed, the vision model's, side by side: the
       // vision model can read drawn structures and schemes; the phone's reading is the fallback.
-      const vision = readIrisPrefs().visionAi;
+      const vision = readIrisPrefs().visionModel;
       setAttachment({ kind: "image", image: prepared, thumb: prepared.thumb, status: "reading", text: "", vision });
       const [ocr, reading] = await Promise.all([
         readImageText(prepared).then(

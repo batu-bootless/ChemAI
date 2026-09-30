@@ -239,20 +239,5 @@ export function answerText(reply: string): string {
   return lines.join("\n\n");
 }
 
+/** The card-format block earlier versions sent with a question: left out when a stored message is read back. */
 export const CARD_OPEN = "⟦CHEMPLUS-KART⟧";
-
-/**
- * The card rules sent at the end of a text question (never in voice mode: a spoken answer is
- * sentences). Kept short - the API keeps the first 8000 characters of a message.
- */
-export const CARD_RULES = `
-${CARD_OPEN} YANIT BİÇİMİ: Yanıtın ekranda kartlarla gösterilir. En çok 1 kısa giriş cümlesi yaz; yanıtın tamamını TEK bir \`\`\`iris kod bloğunda geçerli JSON olarak ver: {"kartlar":[…]}. Kart türleri:
-{"tur":"sonuc","baslik":"…","deger":"asıl cevap, kısa","aciklama":"…"}
-{"tur":"soru","no":"1","soru":"…","secenek":"C","cevap":"…","adimlar":["…"]} — görseldeki ya da metindeki her soru için bir kart
-{"tur":"molekul","ad":"IUPAC/yaygın ad","smiles":"…","rol":"reaktan|ürün|ara ürün|…","aciklama":"…"} — her organik yapı için; SMILES'ı dikkatle yaz, uygulama RDKit ile çizer ve doğrular
-{"tur":"tepkime","denklem":"Fe2O3 + 3CO -> 2Fe + 3CO2","tip":"redoks|çökelme|asit-baz|…","kosullar":"katalizör, sıcaklık, çözücü","gozlem":"renk, gaz, çökelek","reaktanlar":["SMILES"],"urunler":["SMILES"]} — anorganikte denklem ASCII formüllerle (yük: Fe^3+), uygulama denkleştirmeyi doğrular; organikte reaktan ve ürün SMILES'ı ver
-{"tur":"formul","ad":"…","ifade":"PV = nRT","degiskenler":[{"sembol":"P","anlam":"basınç","birim":"atm"}]}
-{"tur":"adimlar","baslik":"Çözüm","adimlar":["…"]}
-{"tur":"not","seviye":"bilgi|uyari|guvenlik","maddeler":["…"]}
-Kurallar: ilk kart "sonuc" (ya da her soru için "soru"); sayıları hesap bloğundan al; kart metinlerinde Unicode formül yaz (H₂SO₄), "denklem" ve "smiles" alanlarında düz ASCII; emin olmadığın SMILES'ı yazma, yalnızca adı ver; blok dışında tablo ya da başlık yazma.
-⟦/CHEMPLUS-KART⟧`;

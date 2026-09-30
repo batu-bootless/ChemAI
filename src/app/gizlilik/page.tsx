@@ -74,7 +74,7 @@ export default function PrivacyPage() {
           <p>
             <strong>Kamera ve fotoğraflar:</strong> bir soruyu fotoğrafla sorduğunuzda görüntüdeki metin ve baskın
             renk telefonunuzda okunur. İris ayarlarındaki &quot;Görsel yapay zekâ ile oku&quot; açıksa (varsayılan olarak
-            açıktır) fotoğraf, içindeki soruların, yapı çizimlerinin ve tepkimelerin okunması için ayrıca
+            kapalıdır) fotoğraf, içindeki soruların, yapı çizimlerinin ve tepkimelerin okunması için ayrıca
             sunucumuz üzerinden Google Gemini API&apos;ye gönderilir; sunucumuzda saklanmaz. Bu ayar kapalıysa fotoğrafın
             kendisi gönderilmez, yalnızca telefonda okunan metin ve renk sorunuza eklenir.{" "}
             <strong>Mikrofon:</strong> yalnızca sesli sohbeti ya da dikteyi siz başlattığınızda, izninizle kullanılır;

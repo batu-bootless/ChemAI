@@ -770,8 +770,8 @@ function ActionsPage() {
         <ToggleRow
           label={l("Görsel yapay zekâ ile oku", "Read with the vision AI")}
           detail={l("Yapı çizimlerini, tepkime şemalarını ve soruları okur", "Reads drawn structures, reaction schemes and questions")}
-          on={prefs.visionAi}
-          onChange={(visionAi) => saveIrisPrefs({ visionAi })}
+          on={prefs.visionModel}
+          onChange={(visionModel) => saveIrisPrefs({ visionModel })}
           last
         />
       </Card>
