@@ -7,7 +7,7 @@ import Wordmark from "@/mobile/brand/Wordmark";
 // Play Console.
 export const metadata: Metadata = { title: "Gizlilik Politikası - ChemAI" };
 
-const UPDATED = "26 Eylül 2026";
+const UPDATED = "30 Eylül 2026";
 const CONTACT = "info@chemplus.com.tr";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -73,8 +73,10 @@ export default function PrivacyPage() {
           </ul>
           <p>
             <strong>Kamera ve fotoğraflar:</strong> bir soruyu fotoğrafla sorduğunuzda görüntüdeki metin ve baskın
-            renk telefonunuzda okunur; fotoğrafın kendisi sunucuya gönderilmez, yalnızca okunan metin ve renk
-            sorunuza eklenir.{" "}
+            renk telefonunuzda okunur. İris ayarlarındaki &quot;Görsel yapay zekâ ile oku&quot; açıksa (varsayılan olarak
+            açıktır) fotoğraf, içindeki soruların, yapı çizimlerinin ve tepkimelerin okunması için ayrıca
+            sunucumuz üzerinden Google Gemini API&apos;ye gönderilir; sunucumuzda saklanmaz. Bu ayar kapalıysa fotoğrafın
+            kendisi gönderilmez, yalnızca telefonda okunan metin ve renk sorunuza eklenir.{" "}
             <strong>Mikrofon:</strong> yalnızca sesli sohbeti ya da dikteyi siz başlattığınızda, izninizle kullanılır;
             konuşmanız telefonunuzun konuşma tanıma hizmetiyle metne çevrilir.{" "}
             <strong>Konum, kişiler, takvim:</strong> toplanmaz. Uygulamada reklam yoktur ve uygulama içinde satın
@@ -93,9 +95,15 @@ export default function PrivacyPage() {
         <Section title="3. Hizmet sağlayıcılarımız">
           <p>Verilerinizi satmayız. Uygulamayı sunmak için şu sağlayıcılarla çalışırız:</p>
           <ul className="list-disc space-y-2 pl-5">
-            <li><strong>Supabase:</strong> veritabanı, kimlik doğrulama ve dosya depolama (profil fotoğrafı).</li>
+            <li>
+              <strong>Supabase:</strong> veritabanı, kimlik doğrulama, dosya depolama (profil fotoğrafı) ve fotoğrafları
+              görsel yapay zekâya ileten sunucu işlevi.
+            </li>
             <li><strong>Vercel:</strong> chemplus.com.tr sunucuları; yapay zekâ, sesli yanıt ve hesap silme istekleri bu sunucular üzerinden işlenir.</li>
-            <li><strong>Google:</strong> Google ile giriş; İris&apos;e gönderdiğiniz metinler yanıt üretilmesi için Google Gemini API&apos;ye gönderilir.</li>
+            <li>
+              <strong>Google:</strong> Google ile giriş; İris&apos;e gönderdiğiniz metinler yanıt üretilmesi, görsel yapay zekâ
+              açıksa fotoğraflarınız okunması için Google Gemini API&apos;ye gönderilir.
+            </li>
             <li><strong>Microsoft Azure ve Google:</strong> sesli yanıt açıksa, İris&apos;in yanıt metni sese çevrilmek için bu hizmetlere gönderilir.</li>
             <li>
               <strong>Bilimsel veri kaynakları</strong> (PubChem, NCI CACTUS): yalnızca sorduğunuz madde adları ve

@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Captions, CaptionsOff, Check, ChevronDown, ChevronLeft, ChevronUp, Headphones, Keyboard, Mic, MicOff, Settings2, X } from "lucide-react";
 import RichText from "@/components/ai/RichText";
+import { answerText } from "@/lib/ai/answerCards";
 import { ToolCards } from "@/components/ai/ToolCards";
 import type { ChatTurn } from "@/components/ai/useAiConversation";
 import { unlockAudio } from "@/lib/ai/naturalVoice";
@@ -452,7 +453,8 @@ function ResultPanel({ turn, speaking, onHide }: { turn: ChatTurn; speaking: boo
         {turn.tools && turn.tools.length > 0 && <ToolCards outcomes={turn.tools} />}
         {turn.content ? (
           <div className="px-1">
-            <RichText text={turn.content} ink />
+            {/* A text-chat answer drawn as cards on the chat screen reads as sentences here. */}
+            <RichText text={answerText(turn.content)} ink />
           </div>
         ) : turn.pending ? (
           <p className="iris-shimmer px-1 text-[14px] font-semibold">{l("Açıklama yazılıyor…", "Writing the explanation…")}</p>

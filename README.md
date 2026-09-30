@@ -22,6 +22,25 @@ Uygulama ücretsizdir; ödeme ve reklam yoktur. Her sayfa hesap ister (İris sit
 
 Önemli sınır: sitenin `/api/ai/chat` ucu `context` alanını 8000 karakterde keser, bu yüzden `PLANNER` metni (assistant.ts) ~7800 karakterin altında kalmalı.
 
+### Kart yanıtlar
+
+Yazılı sohbette İris yanıtını kartlarla verir: sonuç, soru-cevap, molekül, tepkime, formül, adımlar, not. Uygulama her soruya kart biçimini (`CARD_RULES`, `src/lib/ai/answerCards.ts`) ekler; yapay zekâ yanıtı bir ` ```iris ` JSON bloğunda döndürür. `src/components/ai/AnswerCards.tsx` kartları çizer. Molekül kartları hesap motorunun `molecule` aracından (RDKit; ad verilmişse PubChem), tepkimeler denkleştirme motorundan geçer (`src/lib/ai/cardChecks.ts`). Motor İris'in katsayılarını düzeltirse kartta "Motor düzeltti" yazar. Sesli sohbette kart yoktur; dinle/kopyala ve sohbet geçmişi kartların düz metnini kullanır (`answerText`).
+
+### Görsel yapay zekâ (fotoğraftan yapı ve tepkime okuma)
+
+Telefonun metin okuyucusu (ML Kit) yapı çizimlerini ve tepkime oklarını okuyamaz. Fotoğraf bu yüzden, ayarlarda "Görsel yapay zekâ ile oku" açıksa, `supabase/functions/iris-vision` işlevine gider. İşlev fotoğrafı Gemini'nin görsel modeline gösterir ve soruları, yapıları (SMILES), tepkimeleri ve formülleri okur; soruyu çözmez. Uygulama bu okumayla soruyu her zamanki gibi çözer; yapılar ve denklemler cihazda doğrulanır. İşlev kurulu değilse uygulama eskisi gibi yalnızca telefonda okur (6 saat sonra yeniden dener).
+
+Bir kez kurulum (bilgisayarda, proje klasöründe):
+
+```powershell
+npx supabase login
+npx supabase link --project-ref cgdwufmxbyhoypbcxgfw
+npx supabase secrets set GEMINI_API_KEY=<Gemini API anahtarı>
+npx supabase functions deploy iris-vision --no-verify-jwt
+```
+
+`--no-verify-jwt`: işlev çağıranın oturumunu kendisi denetler (yalnızca giriş yapmış kullanıcılar). İsteğe bağlı: `GEMINI_MODEL` (varsayılan `gemini-flash-latest`). Görsel okuma Gemini kotasından yer; fotoğraf Google'a gider (gizlilik politikası ve Play Console'daki veri güvenliği formu buna göre güncellenmeli).
+
 ## Android kimliği
 
 - `applicationId`: **`com.chemai.app`** (`android/app/build.gradle`, `capacitor.config.ts`).

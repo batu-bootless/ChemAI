@@ -2,14 +2,16 @@
 
 // Chem+ app: one Iris answer on the full AI screen, laid out like ChatGPT's and Gemini's: Iris's
 // mark beside the answer, no bubble around it - the engine's cards first (the proof), then the
-// AI's prose, then quiet actions under it: listen, copy, report.
+// AI's answer as cards (AnswerCards.tsx), then quiet actions under it: listen, copy, report.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Check, Copy, Loader2, Square, Volume2, Zap } from "lucide-react";
 import { LogoMark } from "@/mobile/brand/Wordmark";
 import RichText from "@/components/ai/RichText";
+import { AnswerCards, CardsPending, TextCard } from "@/components/ai/AnswerCards";
 import ReportAiReplyButton from "@/components/ai/ReportAiReplyButton";
+import { answerText, parseAnswer } from "@/lib/ai/answerCards";
 import { SafetyRow, VerificationRow } from "@/components/ai/TrustRow";
 import { ToolCards } from "@/components/ai/ToolCards";
 import type { ChatTurn } from "@/components/ai/useAiConversation";
@@ -83,6 +85,9 @@ export default function AssistantMessage({ turn, speakingId, onSpeak }: { turn: 
   const reduce = useReducedMotion();
   const [copied, setCopied] = useState(false);
   const speaking = speakingId === turn.id;
+  const answer = useMemo(() => parseAnswer(turn.content), [turn.content]);
+  // What is read aloud and copied: the cards as sentences, never their JSON.
+  const plain = useMemo(() => answerText(turn.content), [turn.content]);
 
   useEffect(() => {
     if (!copied) return;
@@ -99,7 +104,7 @@ export default function AssistantMessage({ turn, speakingId, onSpeak }: { turn: 
     onSpeak(turn.id);
     unlockAudio();
     try {
-      await speak(turn.content, locale.startsWith("en") ? "en" : "tr");
+      await speak(plain, locale.startsWith("en") ? "en" : "tr");
     } finally {
       onSpeak(null);
     }
@@ -141,7 +146,15 @@ export default function AssistantMessage({ turn, speakingId, onSpeak }: { turn: 
         {turn.content ? (
           <div className="relative text-[#1C1C22]">
             {speaking && <SpeakingTag label={l("Okunuyor", "Reading aloud")} />}
-            <RichText text={turn.content} ink />
+            {answer.cards.length > 0 || answer.incomplete ? (
+              <div className="space-y-2.5">
+                {answer.text && <RichText text={answer.text} ink />}
+                {answer.cards.length > 0 ? <AnswerCards cards={answer.cards} /> : <CardsPending />}
+              </div>
+            ) : (
+              // An answer without cards still reads as one, like everything else on the screen.
+              <TextCard text={answer.text} />
+            )}
           </div>
         ) : turn.pending ? (
           <p className="iris-shimmer pt-1 text-[14.5px] font-semibold">
@@ -167,7 +180,7 @@ export default function AssistantMessage({ turn, speakingId, onSpeak }: { turn: 
             <ActionButton
               onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(turn.content);
+                  await navigator.clipboard.writeText(plain);
                   setCopied(true);
                 } catch {
                   // clipboard blocked: nothing to do

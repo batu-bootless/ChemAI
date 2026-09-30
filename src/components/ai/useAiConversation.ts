@@ -19,6 +19,7 @@ import {
   type Phase,
   type Plan,
 } from "@/lib/ai/assistant";
+import { answerText } from "@/lib/ai/answerCards";
 import { conversationContext } from "@/lib/ai/guide";
 import { digestOf, fileBlock, fileRef, fitsWhole, relevantPassages, wantsWholeDocument, type FileRef } from "@/lib/files/ask";
 import type { FileDoc } from "@/lib/files/read";
@@ -113,7 +114,8 @@ function toWire(turn: ChatTurn): AiMessage {
 function turnFromStored(message: AiMessage): ChatTurn {
   if (message.role === "assistant") {
     const content = cleanReply(message.content);
-    return { id: newId(), role: "assistant", content, wire: content };
+    // History goes back to the AI as sentences, not as the cards' JSON.
+    return { id: newId(), role: "assistant", content, wire: answerText(content) };
   }
   const parsed = parseUserMessage(message.content);
   return {
@@ -440,10 +442,12 @@ export function useAiConversation({
         if (savedId) void attachMedia(mediaIds, savedId);
         // Never the app's own blocks, nor a "done" the app did not do (assistant.ts).
         const clean = cleanReply(reply, outcomes);
-        const checked = checks(question, clean, outcomes, intents);
+        // The answer as sentences (answerCards.ts): what is checked, spoken and sent back as history.
+        const plain = answerText(clean);
+        const checked = checks(question, plain, outcomes, intents);
         if (checked.verification) countUsage({ verified: checked.verification.verified.length });
-        setMessages((prev) => prev.map((turn) => (turn.id === answerId ? { ...turn, content: clean, wire: clean, pending: false, ...checked } : turn)));
-        safely("onReply", () => opts.onReply?.(clean, answerId));
+        setMessages((prev) => prev.map((turn) => (turn.id === answerId ? { ...turn, content: clean, wire: plain, pending: false, ...checked } : turn)));
+        safely("onReply", () => opts.onReply?.(plain, answerId));
       } catch (e) {
         trace("cevap", `hata ${since(started)}: ${e instanceof Error ? e.message : String(e)}`);
         if (view !== viewRef.current) return dropped();
@@ -519,7 +523,7 @@ export function useAiConversation({
           next.restoring = true;
           pending.push({ answerId: next.id, wire: turn.wire, question: turn.content, reply: next.content });
         } else if (readIrisPrefs().safety) {
-          next.safety = scanSafety([turn.content, next.content], [], parsed.intents);
+          next.safety = scanSafety([turn.content, answerText(next.content)], [], parsed.intents);
         }
       });
       setConversationId(id);
@@ -533,7 +537,7 @@ export function useAiConversation({
         const parsed = parseUserMessage(item.wire);
         const outcomes = await runCalls(parsed.calls, language, undefined, { restoring: true });
         if (view !== viewRef.current) return;
-        const checked = checks(item.question, item.reply, outcomes, parsed.intents);
+        const checked = checks(item.question, answerText(item.reply), outcomes, parsed.intents);
         setMessages((prev) => prev.map((turn) => (turn.id === item.answerId ? { ...turn, tools: outcomes, restoring: false, ...checked } : turn)));
       }
     } catch (e) {

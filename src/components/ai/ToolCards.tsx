@@ -151,7 +151,8 @@ function SourceBadge({ result }: { result: ToolResult }) {
   );
 }
 
-function ResultCard({ result }: { result: ToolResult }) {
+/** One engine result as a card. `extra`: what an answer card adds under it (a role, a note). */
+export function ResultCard({ result, extra }: { result: ToolResult; extra?: ReactNode }) {
   const style = TOOL_STYLE[result.tool];
   const palette = INK_COLORS[style.color];
   const Icon = style.icon;
@@ -168,6 +169,7 @@ function ResultCard({ result }: { result: ToolResult }) {
       </div>
       <div className="px-3 py-3 text-[#111]">
         <Body result={result} />
+        {extra}
       </div>
       {(result.checks.length > 0 || result.notes.length > 0) && (
         <div className="space-y-1 border-t-2 border-dashed border-[#111]/20 bg-[#FBF7F1] px-3 py-2">

@@ -765,6 +765,23 @@ function ActionsPage() {
       </Card>
       <Note>{l("Kapalıyken İris yalnızca hesaplar ve anlatır; hiçbir şey oluşturmaz.", "When off, Iris only computes and explains; it makes nothing.")}</Note>
 
+      <SectionTitle>{l("Fotoğraflar", "Photos")}</SectionTitle>
+      <Card>
+        <ToggleRow
+          label={l("Görsel yapay zekâ ile oku", "Read with the vision AI")}
+          detail={l("Yapı çizimlerini, tepkime şemalarını ve soruları okur", "Reads drawn structures, reaction schemes and questions")}
+          on={prefs.visionAi}
+          onChange={(visionAi) => saveIrisPrefs({ visionAi })}
+          last
+        />
+      </Card>
+      <Note>
+        {l(
+          "Açıkken fotoğraf okunmak için Google Gemini'ye gönderilir; kapalıyken yalnızca telefonda okunur ve yapı çizimleri okunamaz.",
+          "When on, the photo is sent to Google Gemini to be read; when off, it is read on the phone only and drawn structures can't be read."
+        )}
+      </Note>
+
       <SectionTitle>{l("Güven", "Trust")}</SectionTitle>
       <Card>
         <ToggleRow

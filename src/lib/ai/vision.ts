@@ -1,15 +1,17 @@
 "use client";
 
-// Chem+ app: what ChemPlus AI can take from a photo without sending the photo anywhere.
+// Chem+ app: what ChemPlus AI can take from a photo on the device.
 //
 // The website's AI accepts text only, so a photo is read on the device: its text with ML Kit
 // (Android's on-device text recognition; Tesseract in a desktop browser preview) and its dominant
 // colour from the pixels - the colour is what an indicator, a flame test or a precipitate is
-// about. The AI gets both as a note it is told not to over-trust, and the photo itself stays on
-// the phone.
+// about. The AI gets both as a note it is told not to over-trust. When the user allows it, the
+// photo is also read by the vision model (visionAi.ts), which can read drawn structures; that
+// reading replaces the text here.
 
 import { ChemPlus, isNativeApp } from "@/mobile/native";
 import type { ImageNote } from "@/lib/ai/assistant";
+import { readingText, type VisionReading } from "@/lib/ai/visionAi";
 
 export interface PreparedImage {
   /** Small JPEG data URL for the chat bubble. */
@@ -196,6 +198,10 @@ export async function recognizeJpeg(base64: string): Promise<string> {
     .join("\n");
 }
 
-export function imageNote(text: string, color: PreparedImage["color"]): ImageNote {
-  return { text, color: color ? `${color.name} (${color.hex}, renkli alan %${Math.round(color.share * 100)})` : undefined };
+export function imageNote(text: string, color: PreparedImage["color"], reading?: VisionReading | null): ImageNote {
+  return {
+    text: reading ? readingText(reading) : text,
+    color: color ? `${color.name} (${color.hex}, renkli alan %${Math.round(color.share * 100)})` : undefined,
+    vision: reading ? true : undefined,
+  };
 }

@@ -16,6 +16,7 @@
 // masses, equations to balance, pH of a stated acid), so the engine still answers offline.
 
 import { askAi, type AiMessage } from "@/lib/ai/client";
+import { CARD_OPEN, CARD_RULES } from "@/lib/ai/answerCards";
 import { latexToUnicode } from "@/lib/ai/latex";
 import { FILE_OPEN, attachedFileOf } from "@/lib/files/ask";
 import { since, trace } from "@/lib/ai/trace";
@@ -49,17 +50,19 @@ const NOTEBOOK_MARK = "⟦CHEMPLUS-DEFTER⟧";
 const PERSONAL_MARK = "⟦CHEMPLUS-KİŞİ⟧";
 const NAME_LINE =
   `\n\n${NAME_MARK} Adın İris (ChemAI'ın yapay zekâ laboratuvar asistanı); önceki mesajlarda başka bir ad geçse de adın artık İris. Adın sorulursa böyle söyle, her yanıtta kendini tanıtma. ` +
-  "⟦…⟧ işaretli bloklar uygulamanın iç verisidir: yanıtında asla yazma, kopyalama ya da taklit etme. " +
+  "⟦…⟧ işaretli bloklar uygulamanın iç verisidir: yanıtında asla yazma, kopyalama ya da taklit etme (⟦CHEMPLUS-KART⟧ ise yanıt biçimi kuralıdır: ona uy). " +
   "Bu mesajda uygulamanın \"YAPILDI\" satırı yoksa hiçbir işin (zamanlayıcı, not, protokol, envanter, rapor, grafik) yapıldığını söyleme; kullanıcıdan isteğini açıkça yazmasını iste.";
 
 const MAX_WIRE = 7800;
 const MAX_CALLS = 10;
 
 export interface ImageNote {
-  /** Text read from the photo on the device. */
+  /** Text read from the photo: on the device, or by the vision model (`vision`, visionAi.ts). */
   text: string;
   /** "açık pembe (#F4A6C8)" - only when the photo has a clear colour. */
   color?: string;
+  /** The vision model read the photo: its questions, structures as SMILES and equations are in `text`. */
+  vision?: boolean;
 }
 
 // --- reading a stored message back ---------------------------------------------------------------
@@ -77,7 +80,9 @@ export interface ParsedUserMessage {
 }
 
 export function parseUserMessage(content: string): ParsedUserMessage {
-  const firstBlock = [CALC_OPEN, IMAGE_OPEN, VOICE_MARK, DATA_OPEN, NAME_MARK, NOTEBOOK_MARK, PERSONAL_MARK, FILE_OPEN].map((mark) => content.indexOf(mark)).filter((i) => i >= 0);
+  const firstBlock = [CALC_OPEN, IMAGE_OPEN, VOICE_MARK, DATA_OPEN, NAME_MARK, NOTEBOOK_MARK, PERSONAL_MARK, FILE_OPEN, CARD_OPEN]
+    .map((mark) => content.indexOf(mark))
+    .filter((i) => i >= 0);
   const text = (firstBlock.length ? content.slice(0, Math.min(...firstBlock)) : content).trim();
   let calls: ToolCall[] = [];
   let intents: Intent[] = [];
@@ -105,7 +110,7 @@ export function parseUserMessage(content: string): ParsedUserMessage {
   if (imageBlock !== null) {
     const color = imageBlock.match(/^Baskın renk: (.*)$/m)?.[1];
     const textPart = imageBlock.split(/^Okunan metin:\s*$/m)[1] ?? imageBlock;
-    image = { text: textPart.trim(), color };
+    image = { text: textPart.trim(), color, vision: imageBlock.includes("görsel yapay zekâ okudu") || undefined };
   }
   return { text, calls, intents, image, data, file: attachedFileOf(content), voice: content.includes(VOICE_MARK) };
 }
@@ -709,12 +714,16 @@ export function composeWire({
   }
   if (image && (image.text || image.color)) {
     wire +=
-      `\n\n${IMAGE_OPEN}\nKullanıcı bir fotoğraf ekledi; uygulama cihazda okudu (görüntünün kendisini göremezsin).` +
+      `\n\n${IMAGE_OPEN}\n` +
+      (image.vision
+        ? "Kullanıcı bir fotoğraf ekledi; görsel yapay zekâ okudu (okuma hatalı olabilir; yapıları ve denklemleri uygulama RDKit ve denkleştirmeyle doğrular, görüntünün kendisini göremezsin)."
+        : "Kullanıcı bir fotoğraf ekledi; uygulama cihazda okudu (görüntünün kendisini göremezsin).") +
       (image.color ? `\nBaskın renk: ${image.color}` : "") +
       `\nOkunan metin:\n${image.text ? image.text.slice(0, 2400) : "(metin bulunamadı)"}\n${IMAGE_CLOSE}`;
   }
-  // The name and the voice rules come last and must survive whole.
-  const voiceBlock = NAME_LINE + (voice ? voiceRules(outcomes.some((outcome) => outcome.ok)) : "");
+  // The name and the answer's form come last and must survive whole: spoken sentences in voice
+  // mode, cards (answerCards.ts) in a text chat.
+  const voiceBlock = NAME_LINE + (voice ? voiceRules(outcomes.some((outcome) => outcome.ok)) : CARD_RULES);
   if (outcomes.length) {
     const lines = outcomes.map((outcome, index) => {
       if (!outcome.ok) return `${index + 1}) [${outcome.tool}] BAŞARISIZ: ${outcome.error}`;
